@@ -25,8 +25,8 @@ public class HttpFileServer {
   private HttpServer server;
   private File rootDirectory;
   private int actualPort;
-  private ConnectionMonitor connectionMonitor;
   Helper helper = new Helper();
+  private final ConnectionMonitor connectionMonitor; // don't know why we need this
 
   /**
    * Create a new HTTP file server
@@ -66,6 +66,7 @@ public class HttpFileServer {
     this.server.createContext("/", new FileHandler());
     this.server.createContext("/api/list", new ApiListHandler());
     this.server.createContext("/style.css", new CssHandler());
+    this.server.createContext("/api/stats", new StatsHandler());
     // Use thread pool for handling requests
     this.server.setExecutor(Executors.newFixedThreadPool(THREAD_POOL_SIZE));
 
@@ -76,38 +77,42 @@ public class HttpFileServer {
   }
 
   /** Handler for serving server statistics */
-  // private class StatsHandler implements HttpHandler {
-  //   @Override
-  //   public void handle(HttpExchange exchange) throws IOException {
-  //     try {
-  //       if (!"GET".equalsIgnoreCase(exchange.getRequestMethod())) {
-  //         sendJsonResponse(exchange, 405, "{\"error\": \"Method not allowed\"}");
-  //         return;
-  //       }
+  private class StatsHandler implements HttpHandler {
 
-  //       ConnectionMonitor.ConnectionStats stats = getConnectionStats();
-  //       if (stats == null) {
-  //         sendJsonResponse(exchange, 500, "{\"error\": \"Statistics not available\"}");
-  //         return;
-  //       }
+    ConnectionMonitor.ConnectionStats stats = connectionMonitor.getStats();
 
-  //       String json = String.format(
-  //         "{\"activeConnections\": %d, \"totalRequests\": %d, \"totalDownloads\": %d,
-  // \"bytesTransferred\": %d}",
-  //         stats.activeConnections(),
-  //         stats.totalRequests(),
-  //         stats.totalDownloads(),
-  //         stats.bytesTransferred()
-  //       );
+    @Override
+    public void handle(HttpExchange exchange) throws IOException {
+      try {
+        if (!"GET".equalsIgnoreCase(exchange.getRequestMethod())) {
+          sendJsonResponse(exchange, 405, "{\"error\": \"Method not allowed\"}");
+          return;
+        }
 
-  //       sendJsonResponse(exchange, 200, json);
+        if (stats == null) {
+          sendJsonResponse(exchange, 500, "{\"error\": \"Statistics not available\"}");
+          return;
+        }
 
-  //     } catch (Exception e) {
-  //       logger.error("Error in stats handler", e);
-  //       sendJsonResponse(exchange, 500, "{\"error\": \"" + escapeJson(e.getMessage()) + "\"}");
-  //     }
-  //   }
-  // }
+        String json =
+            String.format(
+                "{\"totalRequests\":%d,\"totalDownloads\":%d,\"activeConnections\":%d,"
+                    + "\"secondsSinceLastActivity\":%d,\"hasActivity\":%b}",
+                stats.getTotalRequests(),
+                stats.getTotalDownloads(),
+                stats.getActiveConnections(),
+                stats.getSecondsSinceLastActivity(),
+                stats.hasHadActivity());
+
+        sendJsonResponse(exchange, 200, json);
+
+      } catch (Exception e) {
+        logger.error("Error in stats handler", e);
+        sendJsonResponse(
+            exchange, 500, "{\"error\": \"" + helper.escapeJson(e.getMessage()) + "\"}");
+      }
+    }
+  }
 
   /** Start the server */
   public void start() {
@@ -289,7 +294,7 @@ public class HttpFileServer {
           return;
         }
 
-        String json = generateDirectoryJson(directory);
+        String json = helper.generateDirectoryJson(directory);
         sendJsonResponse(exchange, 200, json);
 
       } catch (Exception e) {
@@ -300,36 +305,6 @@ public class HttpFileServer {
   }
 
   /** Generate HTML for directory listing */
-  /** Generate JSON for directory listing */
-  private String generateDirectoryJson(File directory) {
-    StringBuilder json = new StringBuilder();
-    json.append("{\"path\":\"")
-        .append(helper.escapeJson(directory.getAbsolutePath()))
-        .append("\",");
-    json.append("\"name\":\"").append(helper.escapeJson(directory.getName())).append("\",");
-    json.append("\"files\":[");
-
-    File[] files = directory.listFiles();
-    if (files != null) {
-      for (int i = 0; i < files.length; i++) {
-        File file = files[i];
-        json.append("{");
-        json.append("\"name\":\"").append(helper.escapeJson(file.getName())).append("\",");
-        json.append("\"type\":\"").append(file.isDirectory() ? "directory" : "file").append("\",");
-        json.append("\"size\":").append(file.length()).append(",");
-        json.append("\"modified\":").append(file.lastModified());
-        json.append("}");
-
-        if (i < files.length - 1) {
-          json.append(",");
-        }
-      }
-    }
-
-    json.append("]}");
-    return json.toString();
-  }
-
   // Helper methods
   private void sendResponse(HttpExchange exchange, int statusCode, String message)
       throws IOException {

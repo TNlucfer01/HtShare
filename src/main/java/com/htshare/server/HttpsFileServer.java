@@ -10,27 +10,13 @@ import javax.net.ssl.KeyManagerFactory;
 import javax.net.ssl.SSLContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 /** HTTPS File Server using NanoHTTPD with SSL/TLS support */
 public class HttpsFileServer extends NanoHTTPD {
   // gets the detaials about the HttpsFileServer
   private static final Logger logger = LoggerFactory.getLogger(HttpsFileServer.class);
- // max port we can use
-   Helper helper=new Helper();
-  // /** Find available port in range */
-  // // can we reduce this in any way this runs for a 100 times also can cause a error if no port is
-  // // avaible
-  // private static int findAvailablePort(int preferred, int min, int max) throws IOException {
-  //   for (int port = preferred; port <= max; port++) {
-  //     try (ServerSocket socket = new ServerSocket(port)) {
-  //       logger.info("Found available port: {}", port);
-  //       return port;
-  //     } catch (IOException e) {
-  //       logger.debug("Port {} not available", port);
-  //     }
-  //   }
-  //   logger.warn("No port available in range {}-{}, using {}", min, max, preferred);
-  //   return preferred;
-  // }
+  // max port we can use
+  Helper helper = new Helper();
   private final File
       rootDirectory; // i dont want to change the  file or rootDirectory one declored or specified
   private final int actualPort; // final selected port
@@ -198,6 +184,7 @@ public class HttpsFileServer extends NanoHTTPD {
 
   /** Stats API endpoint */
   private Response handleStatsApi() {
+
     ConnectionMonitor.ConnectionStats stats = connectionMonitor.getStats();
 
     String json =
@@ -278,5 +265,4 @@ public class HttpsFileServer extends NanoHTTPD {
     response.addHeader("Cache-Control", "no-cache, no-store, must-revalidate");
     return response;
   }
-
-  }
+}
