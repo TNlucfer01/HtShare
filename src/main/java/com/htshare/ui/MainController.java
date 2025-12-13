@@ -60,7 +60,7 @@ public class MainController {
   private Stage stage;
   private File selectedFolder;
   private HttpsFileServer fileServer;
-  private boolean isDarkTheme = true;
+  private boolean isDarkTheme = false;
   private int currentPort;
   private Timer statsUpdateTimer;
   private NetworkVerifier.NetworkInfo currentNetwork;

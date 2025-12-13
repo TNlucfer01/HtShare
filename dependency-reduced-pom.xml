@@ -43,6 +43,7 @@
                 <transformer>
                   <mainClass>com.htshare.MainApp</mainClass>
                 </transformer>
+                <transformer />
               </transformers>
               <filters>
                 <filter>
