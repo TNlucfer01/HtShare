@@ -8,22 +8,25 @@ import java.net.InetSocketAddress;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.concurrent.Executors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 /**
  * HTTP File Server using Java's built-in HttpServer Serves files from a specified directory with
  * dynamic port assignment
  */
 public class HttpFileServer {
   private static final Logger logger = LoggerFactory.getLogger(HttpFileServer.class);
-   private static final int THREAD_POOL_SIZE = 10;
+  private static final int THREAD_POOL_SIZE = 10;
 
   private HttpServer server;
   private File rootDirectory;
   private int actualPort;
   private ConnectionMonitor connectionMonitor;
-  Helper helper =new Helper();
+  Helper helper = new Helper();
 
   /**
    * Create a new HTTP file server
@@ -62,7 +65,7 @@ public class HttpFileServer {
     // Set up request handlers
     this.server.createContext("/", new FileHandler());
     this.server.createContext("/api/list", new ApiListHandler());
-
+    this.server.createContext("/style.css", new CssHandler());
     // Use thread pool for handling requests
     this.server.setExecutor(Executors.newFixedThreadPool(THREAD_POOL_SIZE));
 
@@ -71,38 +74,40 @@ public class HttpFileServer {
         actualPort,
         rootDirectory.getAbsolutePath());
   }
-    /** Handler for serving server statistics */
-    // private class StatsHandler implements HttpHandler {
-    //   @Override
-    //   public void handle(HttpExchange exchange) throws IOException {
-    //     try {
-    //       if (!"GET".equalsIgnoreCase(exchange.getRequestMethod())) {
-    //         sendJsonResponse(exchange, 405, "{\"error\": \"Method not allowed\"}");
-    //         return;
-    //       }
 
-    //       ConnectionMonitor.ConnectionStats stats = getConnectionStats();
-    //       if (stats == null) {
-    //         sendJsonResponse(exchange, 500, "{\"error\": \"Statistics not available\"}");
-    //         return;
-    //       }
+  /** Handler for serving server statistics */
+  // private class StatsHandler implements HttpHandler {
+  //   @Override
+  //   public void handle(HttpExchange exchange) throws IOException {
+  //     try {
+  //       if (!"GET".equalsIgnoreCase(exchange.getRequestMethod())) {
+  //         sendJsonResponse(exchange, 405, "{\"error\": \"Method not allowed\"}");
+  //         return;
+  //       }
 
-    //       String json = String.format(
-    //         "{\"activeConnections\": %d, \"totalRequests\": %d, \"totalDownloads\": %d, \"bytesTransferred\": %d}",
-    //         stats.activeConnections(),
-    //         stats.totalRequests(),
-    //         stats.totalDownloads(),
-    //         stats.bytesTransferred()
-    //       );
+  //       ConnectionMonitor.ConnectionStats stats = getConnectionStats();
+  //       if (stats == null) {
+  //         sendJsonResponse(exchange, 500, "{\"error\": \"Statistics not available\"}");
+  //         return;
+  //       }
 
-    //       sendJsonResponse(exchange, 200, json);
+  //       String json = String.format(
+  //         "{\"activeConnections\": %d, \"totalRequests\": %d, \"totalDownloads\": %d,
+  // \"bytesTransferred\": %d}",
+  //         stats.activeConnections(),
+  //         stats.totalRequests(),
+  //         stats.totalDownloads(),
+  //         stats.bytesTransferred()
+  //       );
 
-    //     } catch (Exception e) {
-    //       logger.error("Error in stats handler", e);
-    //       sendJsonResponse(exchange, 500, "{\"error\": \"" + escapeJson(e.getMessage()) + "\"}");
-    //     }
-    //   }
-    // }
+  //       sendJsonResponse(exchange, 200, json);
+
+  //     } catch (Exception e) {
+  //       logger.error("Error in stats handler", e);
+  //       sendJsonResponse(exchange, 500, "{\"error\": \"" + escapeJson(e.getMessage()) + "\"}");
+  //     }
+  //   }
+  // }
 
   /** Start the server */
   public void start() {
@@ -136,8 +141,32 @@ public class HttpFileServer {
     return connectionMonitor;
   }
 
+  private class CssHandler implements HttpHandler {
+
+    private static final Path CSS_PATH = Paths.get("resources/css/client-css.css");
+
+    @Override
+    public void handle(HttpExchange exchange) throws IOException {
+
+      // Only allow GET
+      if (!"GET".equalsIgnoreCase(exchange.getRequestMethod())) {
+        exchange.sendResponseHeaders(405, -1);
+        return;
+      }
+
+      byte[] cssBytes = Files.readAllBytes(CSS_PATH);
+
+      exchange.getResponseHeaders().set("Content-Type", "text/css");
+      exchange.sendResponseHeaders(200, cssBytes.length);
+
+      try (OutputStream os = exchange.getResponseBody()) {
+        os.write(cssBytes);
+      }
+    }
+  }
+
   /** Main file serving handler */
-				//why is it differnt from the https approach 
+  // why is it differnt from the https approach
   private class FileHandler implements HttpHandler {
     @Override
     public void handle(HttpExchange exchange) throws IOException {
@@ -154,10 +183,9 @@ public class HttpFileServer {
         // Only handle GET requests
         if (!"GET".equalsIgnoreCase(method)) {
           sendResponse(exchange, 405, "Method Not Allowed");
-          
         }
 
-        // Decode and sanitize path what does sanitize even means 
+        // Decode and sanitize path what does sanitize even means
         path = URLDecoder.decode(path, StandardCharsets.UTF_8);
         if (path.startsWith("/")) {
           path = path.substring(1);
@@ -272,10 +300,12 @@ public class HttpFileServer {
   }
 
   /** Generate HTML for directory listing */
-   /** Generate JSON for directory listing */
+  /** Generate JSON for directory listing */
   private String generateDirectoryJson(File directory) {
     StringBuilder json = new StringBuilder();
-    json.append("{\"path\":\"").append(helper.escapeJson(directory.getAbsolutePath())).append("\",");
+    json.append("{\"path\":\"")
+        .append(helper.escapeJson(directory.getAbsolutePath()))
+        .append("\",");
     json.append("\"name\":\"").append(helper.escapeJson(directory.getName())).append("\",");
     json.append("\"files\":[");
 
@@ -300,8 +330,6 @@ public class HttpFileServer {
     return json.toString();
   }
 
-
-
   // Helper methods
   private void sendResponse(HttpExchange exchange, int statusCode, String message)
       throws IOException {
@@ -322,4 +350,3 @@ public class HttpFileServer {
     }
   }
 }
-

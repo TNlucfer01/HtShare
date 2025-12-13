@@ -3,16 +3,21 @@ package com.htshare.server;
 import com.sun.net.httpserver.HttpServer;
 import java.io.*;
 import java.net.InetSocketAddress;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 public class Helper {
-  
+
   private static final Logger logger = LoggerFactory.getLogger(HttpFileServer.class);
   private static final int MIN_PORT = 8080;
   private static final int MAX_PORT = 8180;
-  public  String generateDirectoryJson(File directory) {
+
+  public String generateDirectoryJson(File directory) {
     StringBuilder json = new StringBuilder();
     json.append("{\"path\":\"").append(escapeJson(directory.getAbsolutePath())).append("\",");
     json.append("\"name\":\"").append(escapeJson(directory.getName())).append("\",");
@@ -96,6 +101,15 @@ public class Helper {
         .replace("\t", "\\t");
   }
 
+  public String loadTemplate(String name) {
+    try {
+      return Files.readString(
+          Paths.get("src/main/resources/template/" + name), StandardCharsets.UTF_8);
+    } catch (IOException e) {
+      throw new RuntimeException("Failed to load template: " + name, e);
+    }
+  }
+
   /** Get embedded CSS for styling */
   public String getEmbeddedCss() {
     return """
@@ -171,25 +185,8 @@ public class Helper {
     return preferredPort;
   }
 
-  public String generateDirectoryHtml(File directory, String relativePath) {
+  public String Breadcrumb(String relativePath) {
     StringBuilder html = new StringBuilder();
-
-    html.append("<!DOCTYPE html><html lang=\"en\"><head>");
-    html.append("<meta charset=\"UTF-8\">");
-    html.append("<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">");
-    html.append("<title>").append(escapeHtml(directory.getName())).append(" - HtShare</title>");
-    html.append("<style>");
-    html.append(getEmbeddedCss());
-    html.append("</style></head><body>");
-
-    // Header
-    html.append("<div class=\"container\">");
-    html.append("<div class=\"header\">");
-    html.append("<h1>📁 ").append(escapeHtml(directory.getName())).append("</h1>");
-    html.append("<p class=\"subtitle\">Shared Folder</p>");
-    html.append("</div>");
-
-    // Breadcrumb navigation
     if (!relativePath.isEmpty()) {
       html.append("<div class=\"breadcrumb\">");
       html.append("<a href=\"/\">🏠 Home</a>");
@@ -208,8 +205,12 @@ public class Helper {
       }
       html.append("</div>");
     }
+    return html.toString();
+  }
 
+  public String ListFiles(File directory, String relativePath) {
     // File listing
+    StringBuilder html = new StringBuilder();
     File[] files = directory.listFiles();
 
     if (files == null || files.length == 0) {
@@ -272,6 +273,16 @@ public class Helper {
     }
 
     html.append("</div></body></html>");
+    return html.toString();
+  }
+
+  public String generateDirectoryHtml(File directory, String relativePath) {
+    String html = loadTemplate("home.html");
+
+    html = html.replace("{{title}}", escapeHtml(directory.getName()));
+    html = html.replace("{{folderName}}", escapeHtml(directory.getName()));
+    html = html.replace("{{breadcrumb}}", Breadcrumb(relativePath));
+    html = html.replace("{{fileList}}", ListFiles(directory, relativePath));
     return html.toString();
   }
 }
