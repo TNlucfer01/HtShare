@@ -184,7 +184,6 @@ public class HttpsFileServer extends NanoHTTPD {
 
   /** Stats API endpoint */
   private Response handleStatsApi() {
-
     ConnectionMonitor.ConnectionStats stats = connectionMonitor.getStats();
 
     String json =

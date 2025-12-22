@@ -1,5 +1,7 @@
 package com.htshare.server;
 
+// it uses th einbuilt httpserver not the nanohttpd we should changeone of the these two
+import com.sun.net.httpserver.Headers;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpServer;
@@ -8,8 +10,6 @@ import java.net.InetSocketAddress;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.concurrent.Executors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -146,26 +146,41 @@ public class HttpFileServer {
     return connectionMonitor;
   }
 
-  private class CssHandler implements HttpHandler {
+  private static final class CssHandler implements HttpHandler {
 
-    private static final Path CSS_PATH = Paths.get("resources/css/client-css.css");
+    private static final String CSS_RESOURCE = "/css/client-css.css";
+
+    private static final byte[] CSS_BYTES;
+
+    static {
+      try (InputStream is = CssHandler.class.getResourceAsStream(CSS_RESOURCE)) {
+
+        if (is == null) {
+          throw new IllegalStateException("CSS resource not found: " + CSS_RESOURCE);
+        }
+
+        CSS_BYTES = is.readAllBytes();
+      } catch (IOException e) {
+        throw new ExceptionInInitializerError(e);
+      }
+    }
 
     @Override
     public void handle(HttpExchange exchange) throws IOException {
 
-      // Only allow GET
-      if (!"GET".equalsIgnoreCase(exchange.getRequestMethod())) {
+      if (!"GET".equals(exchange.getRequestMethod())) {
         exchange.sendResponseHeaders(405, -1);
         return;
       }
 
-      byte[] cssBytes = Files.readAllBytes(CSS_PATH);
+      Headers headers = exchange.getResponseHeaders();
+      headers.set("Content-Type", "text/css; charset=utf-8");
+      headers.set("Cache-Control", "public, max-age=31536000, immutable");
 
-      exchange.getResponseHeaders().set("Content-Type", "text/css");
-      exchange.sendResponseHeaders(200, cssBytes.length);
+      exchange.sendResponseHeaders(200, CSS_BYTES.length);
 
       try (OutputStream os = exchange.getResponseBody()) {
-        os.write(cssBytes);
+        os.write(CSS_BYTES);
       }
     }
   }

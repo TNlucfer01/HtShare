@@ -7,6 +7,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 // what are these concurrent packages do
 
 /** Monitors server connection activity and handles automatic shutdown */
@@ -61,7 +62,7 @@ public class ConnectionMonitor {
 
   /** Start monitoring for inactivity */
   private void startMonitoring() {
-    // what does this  do ?
+    // what does this  do ? this is not working properly
     scheduler.scheduleAtFixedRate(
         () -> {
           if (!enabled) return;
@@ -98,6 +99,7 @@ public class ConnectionMonitor {
   }
 
   /** Record a new request */
+  // why do we need to recover
   public void recordRequest(String path, String method) {
     lastAccessTime.set(System.currentTimeMillis());
     totalRequests.incrementAndGet();
@@ -106,14 +108,14 @@ public class ConnectionMonitor {
     logger.debug("Request recorded: {} {} (Total: {})", method, path, totalRequests.get());
   }
 
-  /** Record a file download */
+  /** Record a file download why record them */
   public void recordDownload(String filename, long bytes) {
     lastAccessTime.set(System.currentTimeMillis());
     totalDownloads.incrementAndGet();
     hasHadActivity = true;
 
     logger.info(
-        "Download recorded: {} ({} bytes) - Total downloads: {}",
+        "Download recorded: {} ({} bytes) - Total downloads:{}",
         filename,
         bytes,
         totalDownloads.get());

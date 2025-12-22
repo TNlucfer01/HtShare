@@ -26,7 +26,6 @@ public class MainApp extends Application {
       MainController controller = loader.getController();
       // what is stage again ?
       controller.setStage(primaryStage);
-
       // scene decide what is showing on the window
       Scene scene = new Scene(root, WINDOW_WIDTH, WINDOW_HEIGHT);
 

@@ -3,7 +3,6 @@
 <head>
   <meta charset="UTF-8">
   <title>{{title}}</title>
-  <link rel="stylesheet" href="/style.css">
 </head>
 <body>
   <div class="container">
@@ -15,6 +14,58 @@
     {{breadcrumb}}
     {{fileList}}
   </div>
+								<style>
+								* { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh; padding: 20px;
+    }
+    .container {
+        max-width: 900px; margin: 0 auto; background: white;
+        border-radius: 16px; box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+        overflow: hidden;
+    }
+    .header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white; padding: 40px 30px; text-align: center;
+    }
+    .header h1 { font-size: 32px; margin-bottom: 8px; font-weight: 600; }
+    .subtitle { opacity: 0.95; font-size: 15px; }
+    .breadcrumb {
+        padding: 16px 25px; background: #f8f9fa;
+        border-bottom: 1px solid #e9ecef; font-size: 14px;
+    }
+    .breadcrumb a { color: #667eea; text-decoration: none; font-weight: 500; }
+    .breadcrumb a:hover { text-decoration: underline; }
+    .file-list { list-style: none; }
+    .file-item {
+        border-bottom: 1px solid #e9ecef;
+        transition: all 0.2s ease;
+    }
+    .file-item:hover { background: #f8f9fa; transform: translateX(4px); }
+    .file-item a {
+        display: flex; align-items: center;
+        padding: 18px 25px; text-decoration: none;
+        color: #2d3748;
+    }
+    .icon { font-size: 28px; margin-right: 16px; min-width: 32px; }
+    .name { flex: 1; font-weight: 500; font-size: 15px; }
+    .size {
+        color: #718096; font-size: 13px;
+        margin-left: 12px; min-width: 70px;
+        text-align: right;
+    }
+    .empty {
+        text-align: center; padding: 80px 20px;
+        color: #a0aec0; font-size: 18px;
+    }
+    @media (max-width: 600px) {
+        .container { border-radius: 0; }
+        .header h1 { font-size: 24px; }
+        .size { display: none; }
+    }
+								</style>
 </body>
 </html>
 

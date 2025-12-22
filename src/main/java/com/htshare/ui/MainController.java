@@ -5,10 +5,12 @@ import com.htshare.server.HttpsFileServer;
 import com.htshare.util.NetworkUtils;
 import com.htshare.util.NetworkVerifier;
 import com.htshare.util.QRCodeGenerator;
+// for some itger thingd
 import java.io.File;
 import java.io.IOException;
 import java.util.Timer;
 import java.util.TimerTask;
+// fxml thing
 import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.scene.Scene;
@@ -19,6 +21,7 @@ import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.stage.DirectoryChooser;
 import javafx.stage.Stage;
+// for the fonts ?
 import org.kordamp.ikonli.javafx.FontIcon;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -27,10 +30,13 @@ public class MainController {
   private static final Logger logger = LoggerFactory.getLogger(MainController.class);
   private static final int PREFERRED_PORT_HTTPS = 8443;
   private static final int PREFERRED_PORT_HTTP = 8080;
+  // why xo  we nee the 5 minuted timout when i have inactive one at the ConnectionMonitor
   private static final int AUTO_SHUTDOWN_MINUTES = 5;
   private static final String GITHUB_URL = "https://github.com/TNLucifer";
-
+  // what are these @FXML dir even means
+  // we are adding this wirht he fxml  with the id of the fx
   @FXML private VBox rootContainer;
+
   @FXML private Label networkStatusLabel;
   @FXML private Button refreshNetworkButton;
   @FXML private Label folderPathLabel;
@@ -50,13 +56,13 @@ public class MainController {
   @FXML private ProgressIndicator serverProgress;
   @FXML private Hyperlink githubLink;
 
-  // Statistics
+  // Statistics then what fos
   @FXML private HBox statsSection;
   @FXML private Label requestsLabel;
   @FXML private Label downloadsLabel;
   @FXML private Label activeConnectionsLabel;
   @FXML private Label timeRemainingLabel;
-
+  // understand the javafxml
   private Stage stage;
   private File selectedFolder;
   private HttpsFileServer fileServer;
@@ -66,6 +72,7 @@ public class MainController {
   private NetworkVerifier.NetworkInfo currentNetwork;
   private boolean useHttps = true;
 
+  // for initialize but why do we need to add them at the front of the method
   @FXML
   public void initialize() {
     stopServerButton.setDisable(true);
@@ -103,8 +110,11 @@ public class MainController {
     this.stage = stage;
   }
 
+  // the netwok section
+  // these are called by the onaction attributes
   @FXML
   private void handleRefreshNetwork() {
+    // what is the status of the netwok now
     checkNetwork();
     updateStatus("Network status refreshed", "info");
   }
@@ -112,13 +122,17 @@ public class MainController {
   private void checkNetwork() {
     new Thread(
             () -> {
+              // what does this do
               NetworkVerifier.NetworkValidationResult result = NetworkVerifier.validateNetwork();
-
+              // what is this methoc and when does this run
               Platform.runLater(
                   () -> {
                     if (result.isValid()) {
+                      // what is the connection now
                       currentNetwork = result.getNetworkInfo();
+                      // why do we need the network type
                       String networkType = NetworkVerifier.getNetworkType(currentNetwork);
+                      // where does this message even show
                       String message =
                           String.format(
                               "✓ Connected to %s: %s",
@@ -142,6 +156,7 @@ public class MainController {
 
   @FXML
   private void handleSelectFolder() {
+    // can we add the drop and drag file
     DirectoryChooser directoryChooser = new DirectoryChooser();
     directoryChooser.setTitle("Select Folder to Share");
 
@@ -274,7 +289,7 @@ public class MainController {
 
                           String securityBadge = useHttps ? "🔒 HTTPS" : "HTTP";
                           String statusMsg = securityBadge + " server running on " + serverUrl;
-
+                          // then why do we need the inactive one
                           if (autoShutdown) {
                             statusMsg += " • Auto-shutdown: " + AUTO_SHUTDOWN_MINUTES + " min idle";
                           }
