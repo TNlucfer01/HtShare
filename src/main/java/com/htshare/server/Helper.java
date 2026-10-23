@@ -23,7 +23,7 @@ public class Helper {
     json.append("\"name\":\"").append(escapeJson(directory.getName())).append("\",");
     json.append("\"files\":[");
 
-    File[] files = directory.listFiles();
+    File[] files = directory.listFiles(f -> !f.isHidden() && !f.getName().startsWith("."));
     if (files != null) {
       for (int i = 0; i < files.length; i++) {
         File file = files[i];
@@ -216,7 +216,9 @@ public class Helper {
 
   /** Folders first, then files, both alphabetical. */
   private File[] sortedEntries(File directory) {
-    File[] files = directory.listFiles(f -> !f.isHidden());
+    // isHidden() means "starts with a dot" on Linux but "has the Hidden attribute" on Windows,
+    // so check both: dotfiles are never served, so they shouldn't be listed either
+    File[] files = directory.listFiles(f -> !f.isHidden() && !f.getName().startsWith("."));
     if (files == null) return new File[0];
     java.util.Arrays.sort(
         files,

@@ -301,13 +301,17 @@ public class AsyncFileServer {
 
   /**
    * Turn a request path into a clean relative path, or null if it tries anything odd: "..",
-   * ".", hidden (dot) files and folders, or backslashes.
+   * ".", hidden (dot) files and folders, backslashes, or ':' (Windows drives / data streams).
    */
   static String safeRelativePath(String path) {
     List<String> parts = new ArrayList<>();
     for (String seg : path.split("/")) {
       if (seg.isEmpty()) continue;
-      if (seg.startsWith(".") || seg.indexOf('\\') >= 0 || seg.indexOf('\0') >= 0) {
+      // ':' covers Windows drive letters ("C:") and alternate data streams ("a.txt::$DATA")
+      if (seg.startsWith(".")
+          || seg.indexOf('\\') >= 0
+          || seg.indexOf(':') >= 0
+          || seg.indexOf('\0') >= 0) {
         return null;
       }
       parts.add(seg);

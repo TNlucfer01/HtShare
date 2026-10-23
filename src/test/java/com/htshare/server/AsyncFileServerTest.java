@@ -58,6 +58,8 @@ class AsyncFileServerTest {
     assertNull(AsyncFileServer.safeRelativePath("/a/./b"));
     assertNull(AsyncFileServer.safeRelativePath("/.ssh/id_rsa"));
     assertNull(AsyncFileServer.safeRelativePath("/a\\..\\b"));
+    assertNull(AsyncFileServer.safeRelativePath("/C:/Windows/win.ini"));
+    assertNull(AsyncFileServer.safeRelativePath("/notes.txt::$DATA"));
   }
 
   // ------------------------------------------------------------------ over the network
@@ -90,6 +92,8 @@ class AsyncFileServerTest {
       assertTrue(html.contains("big file.bin"), "listing shows files");
       assertTrue(!html.contains(".env"), "listing hides dotfiles");
 
+      String json = new String(get(base + "/api/list").body, "UTF-8");
+      assertTrue(json.contains("big file.bin") && !json.contains(".env"), "JSON list hides dotfiles");
       assertEquals(404, get(base + "/.env").status);
       assertEquals(404, get(base + "/../../etc/passwd").status);
       assertEquals(404, get(base + "/missing.txt").status);
