@@ -34,9 +34,9 @@ jobs:
       run:
         shell: bash # Git Bash on Windows, so packaging/package.sh runs on both
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v6
         with:
           distribution: temurin # includes the jmods jlink needs
           java-version: "21"
@@ -95,7 +95,15 @@ jobs:
       - name: Build installers
         run: packaging/package.sh
 
-      - uses: actions/upload-artifact@v4
+      - name: List what was built
+        run: |
+          for f in build/dist/*; do
+            echo "::notice title=Built ${{ matrix.name }}::$(basename "$f") ($(du -h "$f" | cut -f1))"
+          done
+          # a release must have the main installer for each platform
+          if [ "$RUNNER_OS" = Windows ]; then ls build/dist/*.msi >/dev/null; else ls build/dist/*.deb build/dist/*.rpm build/dist/*.AppImage >/dev/null; fi
+
+      - uses: actions/upload-artifact@v7
         with:
           name: HtShare-${{ matrix.name }}
           path: build/dist/*
