@@ -1,0 +1,17 @@
+#!/bin/sh
+# HtShare .deb post-install.
+# Replaces jpackage's default, which calls xdg-desktop-menu and makes the whole install fail
+# on systems without a menu directory (minimal installs, tiling WMs such as Hyprland or Sway).
+set -e
+case "$1" in
+  configure)
+    install -m 644 /opt/htshare/lib/htshare-HtShare.desktop /usr/share/applications/htshare.desktop
+    ln -sf /opt/htshare/bin/HtShare /usr/bin/htshare
+    if command -v update-desktop-database >/dev/null 2>&1; then
+      update-desktop-database -q /usr/share/applications || true
+    fi
+    ;;
+  abort-upgrade|abort-remove|abort-deconfigure)
+    ;;
+esac
+exit 0

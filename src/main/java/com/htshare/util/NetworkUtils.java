@@ -11,7 +11,13 @@ public class NetworkUtils {
 
   /** Get the local IP address of this machine on the network */
   public static String getLocalIPAddress() throws SocketException, UnknownHostException {
-    // Try to find a non-loopback IPv4 address
+    // Same choice as the status bar, so the QR code never points at a VM/VPN adapter
+    try {
+      return NetworkVerifier.getPrimaryNetwork().getAddress().getHostAddress();
+    } catch (SocketException e) {
+      logger.warn("No primary network found: {}", e.getMessage());
+    }
+    // Last resort: first non-loopback IPv4 address
     Enumeration<NetworkInterface> interfaces = NetworkInterface.getNetworkInterfaces();
 
     while (interfaces.hasMoreElements()) {

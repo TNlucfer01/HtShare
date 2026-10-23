@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=HtShare
+GenericName=File Sharing
+Comment=Share a folder to any phone or laptop on your network
+Exec=/opt/htshare/bin/HtShare
+Icon=/opt/htshare/lib/HtShare.png
+Terminal=false
+Categories=Network;FileTransfer;Utility;
+Keywords=file;share;transfer;network;qr;phone;wifi;
+StartupNotify=true

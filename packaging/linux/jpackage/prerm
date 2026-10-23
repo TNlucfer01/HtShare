@@ -1,0 +1,13 @@
+#!/bin/sh
+# HtShare .deb pre-remove: undo what postinst added.
+set -e
+case "$1" in
+  remove|upgrade|deconfigure)
+    rm -f /usr/share/applications/htshare.desktop
+    if [ -L /usr/bin/htshare ]; then rm -f /usr/bin/htshare; fi
+    if command -v update-desktop-database >/dev/null 2>&1; then
+      update-desktop-database -q /usr/share/applications || true
+    fi
+    ;;
+esac
+exit 0

@@ -189,6 +189,12 @@ public class MainController {
     this.stage = stage;
   }
 
+  private javafx.application.HostServices hostServices;
+
+  public void setHostServices(javafx.application.HostServices hostServices) {
+    this.hostServices = hostServices;
+  }
+
   /** Theme to open with (remembered from last time). */
   public boolean isDarkTheme() {
     return isDarkTheme;
@@ -507,7 +513,9 @@ public class MainController {
   @FXML
   private void handleGithubLink() {
     try {
-      java.awt.Desktop.getDesktop().browse(new java.net.URI(GITHUB_URL));
+      // JavaFX's own browser launcher: works on Windows and Linux (incl. Wayland),
+      // unlike java.awt.Desktop
+      hostServices.showDocument(GITHUB_URL);
       logger.info("Opened GitHub link");
     } catch (Exception e) {
       logger.error("Failed to open GitHub link", e);

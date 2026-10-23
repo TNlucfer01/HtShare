@@ -94,44 +94,93 @@ public class NetworkVerifier {
     }
 
     /**
-     * Get the primary network interface (most likely the one connected to internet)
+     * Get the network a phone on the same Wi-Fi can reach us on.
+     *
+     * <p>1. Ask the OS which local address it would use for outgoing traffic (a "connected" UDP
+     * socket picks a route but sends nothing). 2. If that's a virtual/VPN adapter or there is no
+     * route, score the candidates instead. Works the same on Windows, Linux and macOS, where
+     * interface names differ (Windows calls every Ethernet-type adapter "ethN", including
+     * Hyper-V/WSL and VirtualBox ones; Linux uses enp3s0 / wlp2s0).
      */
     public static NetworkInfo getPrimaryNetwork() throws SocketException, UnknownHostException {
         List<NetworkInfo> networks = getActiveNetworks();
-        
+
         if (networks.isEmpty()) {
             throw new SocketException("No active network interfaces found");
         }
-        
-        // Try to find the interface with default gateway
-        // Priority: Ethernet > WiFi > Others
-        for (NetworkInfo network : networks) {
-            String name = network.getInterfaceName().toLowerCase();
-            String display = network.getDisplayName().toLowerCase();
-            
-            // Prefer Ethernet connections
-            if (name.contains("eth") || display.contains("ethernet")) {
-                logger.info("Selected primary network (Ethernet): {}", network);
-                return network;
+
+        InetAddress routed = defaultRouteAddress();
+        if (routed != null) {
+            for (NetworkInfo network : networks) {
+                if (network.getAddress().equals(routed) && !isVirtual(network)) {
+                    logger.info("Selected primary network (default route): {}", network);
+                    return network;
+                }
             }
         }
-        
-        // Then WiFi
+
+        NetworkInfo best = networks.get(0);
         for (NetworkInfo network : networks) {
-            String name = network.getInterfaceName().toLowerCase();
-            String display = network.getDisplayName().toLowerCase();
-            
-            if (name.contains("wlan") || name.contains("wi-fi") || 
-                display.contains("wireless") || display.contains("wi-fi")) {
-                logger.info("Selected primary network (WiFi): {}", network);
-                return network;
+            if (score(network) > score(best)) {
+                best = network;
             }
         }
-        
-        // Return first available
-        NetworkInfo primary = networks.get(0);
-        logger.info("Selected primary network (default): {}", primary);
-        return primary;
+        logger.info("Selected primary network (best match): {}", best);
+        return best;
+    }
+
+    /** Local address the OS would use for traffic to the internet, or null if there's no route. */
+    static InetAddress defaultRouteAddress() {
+        try (DatagramSocket probe = new DatagramSocket()) {
+            // UDP connect() only chooses a route; no packet is sent.
+            probe.connect(InetAddress.getByAddress(new byte[] {8, 8, 8, 8}), 53);
+            InetAddress local = probe.getLocalAddress();
+            return local == null || local.isAnyLocalAddress() ? null : local;
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private static final String[] VIRTUAL_HINTS = {
+        "virtual", "vmware", "vmnet", "vbox", "hyper-v", "vethernet", "docker", "veth", "br-",
+        "virbr", "lxc", "lxd", "tun", "tap", "wg", "wireguard", "tailscale", "zerotier", "zt",
+        "utun", "vpn", "npcap", "loopback", "teredo", "isatap", "anyconnect", "nordlynx",
+        "tap-windows", "wintun", "wi-fi direct"
+    };
+
+    /** VM, container, VPN and tunnel adapters: phones on the Wi-Fi can't reach these. */
+    static boolean isVirtual(NetworkInfo n) {
+        return looksVirtual(n.getInterfaceName(), n.getDisplayName());
+    }
+
+    static boolean looksVirtual(String name, String display) {
+        String a = name == null ? "" : name.toLowerCase();
+        String b = display == null ? "" : display.toLowerCase();
+        for (String hint : VIRTUAL_HINTS) {
+            // short hints must match the start of the name (e.g. "tun0", "wg0"), not any substring
+            boolean shortHint = hint.length() <= 3;
+            if (shortHint ? a.startsWith(hint) : (a.contains(hint) || b.contains(hint))) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static int score(NetworkInfo n) {
+        if (isVirtual(n)) {
+            return -100;
+        }
+        int s = 0;
+        byte[] ip = n.getAddress().getAddress();
+        int a = ip[0] & 0xff, b = ip[1] & 0xff;
+        if (a == 192 && b == 168) s += 30;               // typical home Wi-Fi
+        else if (a == 10) s += 25;
+        else if (a == 172 && b >= 16 && b <= 31) s += 15; // also common for Docker, so lower
+        else if (a == 169 && b == 254) s -= 50;           // link-local: no DHCP, unusable
+        String type = getNetworkType(n);
+        if (type.equals("Wi-Fi")) s += 10;
+        else if (type.equals("Ethernet")) s += 8;
+        return s;
     }
 
     /**
@@ -202,18 +251,27 @@ public class NetworkVerifier {
      * Get network type description
      */
     public static String getNetworkType(NetworkInfo network) {
-        String name = network.getInterfaceName().toLowerCase();
-        String display = network.getDisplayName().toLowerCase();
-        
-        if (name.contains("eth") || display.contains("ethernet")) {
-            return "Ethernet";
-        } else if (name.contains("wlan") || name.contains("wi-fi") || 
-                   display.contains("wireless") || display.contains("wi-fi")) {
-            return "Wi-Fi";
-        } else if (name.contains("lo")) {
+        return typeOf(network.getInterfaceName(), network.getDisplayName());
+    }
+
+    static String typeOf(String interfaceName, String displayName) {
+        String name = interfaceName == null ? "" : interfaceName.toLowerCase();
+        String display = displayName == null ? "" : displayName.toLowerCase();
+
+        if (name.startsWith("lo") && !name.startsWith("lowpan")) {
             return "Loopback";
-        } else if (name.contains("vir") || display.contains("virtual")) {
+        }
+        if (looksVirtual(interfaceName, displayName)) {
             return "Virtual";
+        }
+        // Wi-Fi: wlan0 (Windows/old Linux), wlp2s0 (Linux), "Wi-Fi"/"Wireless" display names
+        if (name.startsWith("wl") || name.contains("wi-fi") || display.contains("wireless")
+                || display.contains("wi-fi") || display.contains("wlan") || display.contains("802.11")) {
+            return "Wi-Fi";
+        }
+        // Ethernet: eth0 (Windows/old Linux), enp3s0 / eno1 / ens33 / enx… (Linux), en0 (macOS)
+        if (name.startsWith("eth") || name.startsWith("en") || display.contains("ethernet")) {
+            return "Ethernet";
         }
         return "Other";
     }

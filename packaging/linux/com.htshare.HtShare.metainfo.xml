@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>com.htshare.HtShare</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>MIT</project_license>
+  <name>HtShare</name>
+  <summary>Share a folder to any phone on your network</summary>
+  <description>
+    <p>
+      Pick a folder, press Start sharing and scan the QR code. Any phone or laptop on the same
+      network can browse and download the files in its browser, with no app to install.
+    </p>
+    <ul>
+      <li>QR code to connect</li>
+      <li>Fast asynchronous transfers to many devices at once</li>
+      <li>Resumable downloads and video seeking</li>
+      <li>Live transfers panel with progress and speed for each device</li>
+      <li>HTTPS with a self-signed certificate, or plain HTTP</li>
+      <li>Stops sharing by itself after 5 idle minutes</li>
+      <li>Dark and light themes</li>
+    </ul>
+  </description>
+  <launchable type="desktop-id">com.htshare.HtShare.desktop</launchable>
+  <screenshots>
+    <screenshot type="default">
+      <caption>Sharing a folder while two devices download</caption>
+      <image>https://raw.githubusercontent.com/TNlucfer01/htshare/main/screenshots/main-window.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>What the phone sees</caption>
+      <image>https://raw.githubusercontent.com/TNlucfer01/htshare/main/screenshots/phone.png</image>
+    </screenshot>
+  </screenshots>
+  <url type="homepage">https://github.com/TNlucfer01/htshare</url>
+  <url type="bugtracker">https://github.com/TNlucfer01/htshare/issues</url>
+  <url type="vcs-browser">https://github.com/TNlucfer01/htshare</url>
+  <developer id="io.github.tnlucfer01">
+    <name>Aathi Senthil</name>
+  </developer>
+  <content_rating type="oars-1.1" />
+  <provides>
+    <binary>HtShare</binary>
+  </provides>
+  <releases>
+    <release version="1.1.0" date="2026-10-24">
+      <description>
+        <p>New look, asynchronous file server, live transfers panel, working HTTPS, and installers for Windows and Linux.</p>
+      </description>
+    </release>
+    <release version="1.0.0" date="2025-11-01" />
+  </releases>
+  <categories>
+    <category>Network</category>
+    <category>FileTransfer</category>
+    <category>Utility</category>
+  </categories>
+</component>

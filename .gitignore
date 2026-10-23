@@ -10,3 +10,6 @@ dependency-reduced-pom.xml
 .vscode/
 *.iml
 .DS_Store
+
+# Installer builds (packaging/package.sh)
+build/
