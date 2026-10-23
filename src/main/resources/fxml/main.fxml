@@ -52,7 +52,7 @@
 						<HBox spacing="8" alignment="CENTER_LEFT">
 							<HBox styleClass="field" HBox.hgrow="ALWAYS">
 								<FontIcon iconLiteral="fth-folder" iconSize="14" />
-								<Label fx:id="folderPathLabel" text="No folder selected"
+								<Label fx:id="folderPathLabel" text="Drop a folder here, or choose one"
 									styleClass="folder-path, folder-empty" textOverrun="LEADING_ELLIPSIS"
 									maxWidth="Infinity" HBox.hgrow="ALWAYS" />
 							</HBox>
@@ -61,13 +61,14 @@
 						</HBox>
 					</VBox>
 
-					<!-- Options -->
-					<VBox styleClass="card">
+					<!-- Options (hidden while sharing: they can't change then) -->
+					<VBox fx:id="optionsCard" styleClass="card">
 						<Label text="Options" styleClass="card-title" />
 						<HBox styleClass="option">
 							<VBox spacing="2" HBox.hgrow="ALWAYS">
 								<Label text="HTTPS" styleClass="option-title" />
-								<Label text="Encrypted. Phones will show a one-time certificate warning."
+								<Label fx:id="httpsHintLabel"
+									text="Encrypted. Phones show a one-time certificate warning."
 									styleClass="hint" wrapText="true" />
 							</VBox>
 							<CheckBox fx:id="httpsCheck" styleClass="switch" selected="true"
@@ -98,12 +99,12 @@
 					<!-- Live stats -->
 					<HBox fx:id="statsSection" styleClass="card" visible="false">
 						<VBox styleClass="stat, stat-first" HBox.hgrow="ALWAYS">
-							<Label text="Requests" styleClass="stat-label" />
-							<Label fx:id="requestsLabel" text="0" styleClass="stat-value" />
+							<Label text="Files sent" styleClass="stat-label" />
+							<Label fx:id="downloadsLabel" text="0" styleClass="stat-value" />
 						</VBox>
 						<VBox styleClass="stat" HBox.hgrow="ALWAYS">
-							<Label text="Downloads" styleClass="stat-label" />
-							<Label fx:id="downloadsLabel" text="0" styleClass="stat-value" />
+							<Label text="Data sent" styleClass="stat-label" />
+							<Label fx:id="dataSentLabel" text="0 B" styleClass="stat-value" />
 						</VBox>
 						<VBox styleClass="stat" HBox.hgrow="ALWAYS">
 							<Label text="Connected" styleClass="stat-label" />
@@ -115,7 +116,18 @@
 						</VBox>
 					</HBox>
 
-					<Label fx:id="portInfoLabel" styleClass="hint" wrapText="true" visible="false" />
+					<!-- Live transfers -->
+					<VBox fx:id="transfersCard" styleClass="card" visible="false">
+						<HBox alignment="CENTER_LEFT" spacing="8">
+							<Label text="Transfers" styleClass="card-title" />
+							<Region HBox.hgrow="ALWAYS" />
+							<Label fx:id="transfersCountLabel" styleClass="hint" />
+						</HBox>
+						<Label fx:id="transfersEmpty"
+							text="Files that people open or download will show up here."
+							styleClass="hint" wrapText="true" />
+						<VBox fx:id="transfersList" spacing="14" />
+					</VBox>
 				</VBox>
 
 				<!-- Right: connect panel -->
@@ -142,13 +154,15 @@
 							HBox.hgrow="ALWAYS" />
 						<Button fx:id="copyUrlButton" onAction="#handleCopyUrl" styleClass="icon-button">
 							<graphic>
-								<FontIcon iconLiteral="fth-copy" iconSize="14" />
+								<FontIcon fx:id="copyIcon" iconLiteral="fth-copy" iconSize="14" />
 							</graphic>
 							<tooltip>
 								<Tooltip text="Copy link" />
 							</tooltip>
 						</Button>
 					</HBox>
+
+					<Label fx:id="portInfoLabel" styleClass="hint" wrapText="true" visible="false" />
 				</VBox>
 			</HBox>
 		</VBox>

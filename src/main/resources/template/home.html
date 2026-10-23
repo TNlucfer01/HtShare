@@ -6,6 +6,8 @@
 <meta name="color-scheme" content="light dark">
 <meta name="robots" content="noindex">
 <title>{{title}} · HtShare</title>
+<link rel="icon" href="/favicon.ico" type="image/png">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <style>
   :root {
     --bg: #f7f7f8; --surface: #ffffff; --surface-2: #f1f1f3;
@@ -45,6 +47,8 @@
   .brand { font-weight: 600; font-size: 15px; letter-spacing: -0.01em; }
   .live { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 500; color: var(--live); }
   .live::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--live); }
+  .live.off { color: var(--muted); }
+  .live.off::before { background: var(--faint); }
 
   /* heading */
   .head { padding: 20px 0 14px; }
@@ -60,8 +64,11 @@
     list-style: none; background: var(--surface);
     border: 1px solid var(--border); border-radius: 14px; overflow: hidden;
   }
+  .list li { display: flex; align-items: stretch; }
   .list li + li { border-top: 1px solid var(--border); }
+  .list li[hidden] { display: none; }
   .row {
+    flex: 1; min-width: 0;
     display: flex; align-items: center; gap: 12px;
     min-height: 60px; padding: 10px 14px;
     -webkit-tap-highlight-color: transparent;
@@ -87,6 +94,25 @@
   .name { font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .meta { font-size: 12.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
 
+  .dl {
+    flex: none; width: 52px; display: grid; place-items: center;
+    border-left: 1px solid var(--border); -webkit-tap-highlight-color: transparent;
+  }
+  .dl:hover { background: var(--surface-2); }
+  .dl:active { background: var(--border); }
+  .dl:hover .end { stroke: var(--text); }
+  .dl:focus-visible { outline: 2px solid var(--text); outline-offset: -2px; }
+
+  .filter { margin-bottom: 12px; }
+  .filter input {
+    width: 100%; height: 42px; padding: 0 14px; border-radius: 10px;
+    border: 1px solid var(--border); background: var(--surface); color: var(--text);
+    font: inherit; font-size: 16px; /* 16px stops iOS zooming in on focus */
+  }
+  .filter input::placeholder { color: var(--faint); }
+  .filter input:focus { outline: none; border-color: var(--muted); }
+  .nomatch { color: var(--muted); text-align: center; padding: 24px 0; }
+
   .end { flex: none; width: 18px; height: 18px; fill: none; stroke: var(--faint); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
   .row:hover .end { stroke: var(--text); }
 
@@ -110,7 +136,7 @@
   <header class="top">
     <div class="wrap">
       <span class="brand">HtShare</span>
-      <span class="live">Live</span>
+      <span class="live" id="live">Live</span>
     </div>
   </header>
 
@@ -123,6 +149,41 @@
     {{fileList}}
   </main>
 
-  <footer>Shared from a computer on your network · tap a file to download</footer>
+  <footer>Shared from a computer on your network · tap to open, arrow to download</footer>
+
+<script>
+  // Filter the list as you type (only rendered for folders with many items)
+  (function () {
+    var q = document.getElementById("q");
+    if (!q) return;
+    var items = document.querySelectorAll(".list li");
+    var none = document.querySelector(".nomatch");
+    q.addEventListener("input", function () {
+      var term = q.value.trim().toLowerCase(), shown = 0;
+      items.forEach(function (li) {
+        var hit = !term || li.dataset.name.indexOf(term) !== -1;
+        li.hidden = !hit;
+        if (hit) shown++;
+      });
+      none.hidden = shown !== 0;
+    });
+  })();
+
+  // Show "Offline" when sharing stops. /api/ping doesn't count as activity,
+  // so leaving this page open won't keep the computer from auto-stopping.
+  (function () {
+    var live = document.getElementById("live");
+    function check() {
+      fetch("/api/ping", { cache: "no-store" })
+        .then(function (r) { return r.ok; }, function () { return false; })
+        .then(function (ok) {
+          live.textContent = ok ? "Live" : "Offline";
+          live.classList.toggle("off", !ok);
+        });
+    }
+    setInterval(function () { if (!document.hidden) check(); }, 8000);
+    document.addEventListener("visibilitychange", function () { if (!document.hidden) check(); });
+  })();
+</script>
 </body>
 </html>

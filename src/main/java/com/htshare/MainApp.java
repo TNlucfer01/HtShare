@@ -30,9 +30,9 @@ public class MainApp extends Application {
       // scene decide what is showing on the window
       Scene scene = new Scene(root, WINDOW_WIDTH, WINDOW_HEIGHT);
 
-      // Load default theme (dark): base.css + the dark palette
+      // Load the theme used last time (dark by default): base.css + a palette
       // for the css
-      scene.getStylesheets().setAll(MainController.themeStylesheets(true));
+      scene.getStylesheets().setAll(MainController.themeStylesheets(controller.isDarkTheme()));
       // meta data
       primaryStage.setTitle("HtShare");
       var icon = getClass().getResourceAsStream("/image/htshare.png");
@@ -74,7 +74,23 @@ public class MainApp extends Application {
     }
   }
 
+  /**
+   * INFO by default (Logback's built-in default is DEBUG). Done in code rather than logback.xml:
+   * reading a config file pulls in JNDI (java.naming), which the bundled runtime leaves out.
+   * Run with -Dhtshare.debug=true to see every request.
+   */
+  private static void configureLogging() {
+    var root = LoggerFactory.getLogger(org.slf4j.Logger.ROOT_LOGGER_NAME);
+    if (root instanceof ch.qos.logback.classic.Logger lb) {
+      lb.setLevel(
+          Boolean.getBoolean("htshare.debug")
+              ? ch.qos.logback.classic.Level.DEBUG
+              : ch.qos.logback.classic.Level.INFO);
+    }
+  }
+
   public static void main(String[] args) {
+    configureLogging();
     launch(args);
   }
 }

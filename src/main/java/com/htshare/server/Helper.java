@@ -1,8 +1,6 @@
 package com.htshare.server;
 
-import com.sun.net.httpserver.HttpServer;
 import java.io.*;
-import java.net.InetSocketAddress;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -14,9 +12,10 @@ import org.slf4j.LoggerFactory;
 
 public class Helper {
 
-  private static final Logger logger = LoggerFactory.getLogger(HttpFileServer.class);
-  private static final int MIN_PORT = 8080;
-  private static final int MAX_PORT = 8180;
+  private static final Logger logger = LoggerFactory.getLogger(Helper.class);
+  /** Page templates, read once from the classpath. */
+  private static final java.util.Map<String, String> TEMPLATES =
+      new java.util.concurrent.ConcurrentHashMap<>();
 
   public String generateDirectoryJson(File directory) {
     StringBuilder json = new StringBuilder();
@@ -45,23 +44,58 @@ public class Helper {
     return json.toString();
   }
 
+  private static final java.util.Map<String, String> MIME =
+      java.util.Map.ofEntries(
+          java.util.Map.entry("html", "text/html; charset=utf-8"),
+          java.util.Map.entry("htm", "text/html; charset=utf-8"),
+          java.util.Map.entry("txt", "text/plain; charset=utf-8"),
+          java.util.Map.entry("md", "text/plain; charset=utf-8"),
+          java.util.Map.entry("log", "text/plain; charset=utf-8"),
+          java.util.Map.entry("csv", "text/csv; charset=utf-8"),
+          java.util.Map.entry("css", "text/css; charset=utf-8"),
+          java.util.Map.entry("js", "text/javascript; charset=utf-8"),
+          java.util.Map.entry("json", "application/json"),
+          java.util.Map.entry("xml", "application/xml"),
+          java.util.Map.entry("pdf", "application/pdf"),
+          java.util.Map.entry("jpg", "image/jpeg"),
+          java.util.Map.entry("jpeg", "image/jpeg"),
+          java.util.Map.entry("png", "image/png"),
+          java.util.Map.entry("gif", "image/gif"),
+          java.util.Map.entry("webp", "image/webp"),
+          java.util.Map.entry("avif", "image/avif"),
+          java.util.Map.entry("heic", "image/heic"),
+          java.util.Map.entry("svg", "image/svg+xml"),
+          java.util.Map.entry("bmp", "image/bmp"),
+          java.util.Map.entry("mp4", "video/mp4"),
+          java.util.Map.entry("m4v", "video/mp4"),
+          java.util.Map.entry("webm", "video/webm"),
+          java.util.Map.entry("mov", "video/quicktime"),
+          java.util.Map.entry("mkv", "video/x-matroska"),
+          java.util.Map.entry("mp3", "audio/mpeg"),
+          java.util.Map.entry("m4a", "audio/mp4"),
+          java.util.Map.entry("aac", "audio/aac"),
+          java.util.Map.entry("wav", "audio/wav"),
+          java.util.Map.entry("ogg", "audio/ogg"),
+          java.util.Map.entry("flac", "audio/flac"),
+          java.util.Map.entry("zip", "application/zip"),
+          java.util.Map.entry("gz", "application/gzip"),
+          java.util.Map.entry("apk", "application/vnd.android.package-archive"));
+
   public String getMimeType(String filename) {
-    String lower = filename.toLowerCase();
-    if (lower.endsWith(".html") || lower.endsWith(".htm")) return "text/html";
-    if (lower.endsWith(".txt")) return "text/plain";
-    if (lower.endsWith(".css")) return "text/css";
-    if (lower.endsWith(".js")) return "application/javascript";
-    if (lower.endsWith(".json")) return "application/json";
-    if (lower.endsWith(".xml")) return "application/xml";
-    if (lower.endsWith(".jpg") || lower.endsWith(".jpeg")) return "image/jpeg";
-    if (lower.endsWith(".png")) return "image/png";
-    if (lower.endsWith(".gif")) return "image/gif";
-    if (lower.endsWith(".svg")) return "image/svg+xml";
-    if (lower.endsWith(".pdf")) return "application/pdf";
-    if (lower.endsWith(".zip")) return "application/zip";
-    if (lower.endsWith(".mp4")) return "video/mp4";
-    if (lower.endsWith(".mp3")) return "audio/mpeg";
-    return "application/octet-stream";
+    int dot = filename.lastIndexOf('.');
+    String ext = dot < 0 ? "" : filename.substring(dot + 1).toLowerCase();
+    return MIME.getOrDefault(ext, "application/octet-stream");
+  }
+
+  /** Files a phone browser can show by itself, so the row opens them instead of downloading. */
+  public boolean isPreviewable(String filename) {
+    String mime = getMimeType(filename);
+    return mime.startsWith("image/") && !mime.equals("image/heic")
+        || mime.equals("video/mp4")
+        || mime.equals("video/webm")
+        || mime.startsWith("audio/")
+        || mime.equals("application/pdf")
+        || mime.startsWith("text/plain");
   }
 
   public String getFileIcon(String filename) {
@@ -106,6 +140,10 @@ public class Helper {
 
   /** Load a page template from the classpath, so it also works from the jar / AppImage. */
   public String loadTemplate(String name) {
+    return TEMPLATES.computeIfAbsent(name, Helper::readTemplate);
+  }
+
+  private static String readTemplate(String name) {
     try (InputStream in = Helper.class.getResourceAsStream("/template/" + name)) {
       if (in == null) {
         throw new IOException("not on classpath");
@@ -114,26 +152,6 @@ public class Helper {
     } catch (IOException e) {
       throw new RuntimeException("Failed to load template: " + name, e);
     }
-  }
-
-  /** Get embedded CSS for styling */
-  // repeated
-  /** Find an available port starting from preferred port */
-  public int findAvailablePort(int preferredPort) {
-    for (int port = preferredPort; port <= MAX_PORT; port++) {
-      try {
-        // Try to create a server socket on this port
-        HttpServer testServer = HttpServer.create(new InetSocketAddress(port), 0);
-        testServer.stop(0);
-        logger.info("Found available port: {}", port);
-        return port;
-      } catch (IOException e) {
-        logger.debug("Port {} is not available, trying next...", port);
-      }
-    }
-
-    logger.warn("No available port found in range {}-{}, using preferred port", MIN_PORT, MAX_PORT);
-    return preferredPort;
   }
 
   /** Percent-encode a relative path for use in an href, segment by segment. */
@@ -217,7 +235,14 @@ public class Helper {
           + "<p>This folder is empty</p></div>";
     }
 
-    StringBuilder html = new StringBuilder("<ul class=\"list\">");
+    StringBuilder html = new StringBuilder();
+    if (files.length > 8) {
+      html.append("<div class=\"filter\"><input id=\"q\" type=\"search\" autocomplete=\"off\"")
+          .append(" placeholder=\"Filter ").append(files.length).append(" items\"")
+          .append(" aria-label=\"Filter files\"></div>")
+          .append("<p class=\"nomatch\" hidden>No matches</p>");
+    }
+    html.append("<ul class=\"list\">");
     for (File f : files) {
       String path = relativePath.isEmpty() ? f.getName() : relativePath + "/" + f.getName();
       String href = escapeHtml(encodePath(path));
@@ -226,7 +251,8 @@ public class Helper {
       if (f.isDirectory()) {
         String[] children = f.list();
         int count = children == null ? 0 : children.length;
-        html.append("<li><a class=\"row\" href=\"").append(href).append("\">")
+        html.append("<li data-name=\"").append(escapeHtml(f.getName().toLowerCase())).append("\">")
+            .append("<a class=\"row\" href=\"").append(href).append("\">")
             .append("<span class=\"ico ico-folder\">").append(ICON_FOLDER).append("</span>")
             .append("<span class=\"text\"><span class=\"name\">").append(name).append("</span>")
             .append("<span class=\"meta\">").append(count).append(count == 1 ? " item" : " items")
@@ -234,14 +260,29 @@ public class Helper {
             .append(ICON_CHEVRON)
             .append("</a></li>");
       } else {
-        html.append("<li><a class=\"row\" href=\"").append(href).append("\" download>")
-            .append("<span class=\"ico ico-").append(fileKind(f.getName())).append("\">")
-            .append(escapeHtml(fileBadge(f.getName()))).append("</span>")
-            .append("<span class=\"text\"><span class=\"name\">").append(name).append("</span>")
-            .append("<span class=\"meta\">").append(formatFileSize(f.length()))
-            .append("</span></span>")
-            .append(ICON_DOWNLOAD)
-            .append("</a></li>");
+        // Photos, videos, music, PDFs and text open in the phone's browser (tap the row);
+        // the arrow button always downloads. Anything else downloads straight away.
+        boolean preview = isPreviewable(f.getName());
+        String dlHref = href + "?download=1";
+        String ico =
+            "<span class=\"ico ico-" + fileKind(f.getName()) + "\">"
+                + escapeHtml(fileBadge(f.getName())) + "</span>";
+        String text =
+            "<span class=\"text\"><span class=\"name\">" + name + "</span>"
+                + "<span class=\"meta\">" + formatFileSize(f.length())
+                + "</span></span>";
+        html.append("<li data-name=\"").append(escapeHtml(f.getName().toLowerCase())).append("\">");
+        if (preview) {
+          html.append("<a class=\"row\" href=\"").append(href).append("\">")
+              .append(ico).append(text).append("</a>")
+              .append("<a class=\"dl\" href=\"").append(dlHref).append("\" download")
+              .append(" aria-label=\"Download ").append(name).append("\">")
+              .append(ICON_DOWNLOAD).append("</a>");
+        } else {
+          html.append("<a class=\"row\" href=\"").append(dlHref).append("\" download>")
+              .append(ico).append(text).append(ICON_DOWNLOAD).append("</a>");
+        }
+        html.append("</li>");
       }
     }
     html.append("</ul>");

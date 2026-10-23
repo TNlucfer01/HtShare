@@ -93,9 +93,9 @@ public class ConnectionMonitor {
                 totalRequests.get());
           }
         },
-        30,
-        30,
-        TimeUnit.SECONDS); // Check every 30 seconds
+        5,
+        5,
+        TimeUnit.SECONDS); // Check every 5 seconds
   }
 
   /** Record a new request */
@@ -119,6 +119,14 @@ public class ConnectionMonitor {
         filename,
         bytes,
         totalDownloads.get());
+  }
+
+  /**
+   * Mark the server as busy without counting a new request. The async server calls this for
+   * every chunk it sends, so a long download keeps the server alive until it finishes.
+   */
+  public void touch() {
+    lastAccessTime.set(System.currentTimeMillis());
   }
 
   /** Record connection opened */

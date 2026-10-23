@@ -1,15 +1,21 @@
 package com.htshare.ui;
 
 import com.htshare.server.ConnectionMonitor;
-import com.htshare.server.HttpsFileServer;
+import com.htshare.server.AsyncFileServer;
+import com.htshare.server.TransferTracker;
 import com.htshare.util.NetworkUtils;
 import com.htshare.util.NetworkVerifier;
 import com.htshare.util.QRCodeGenerator;
+import com.htshare.util.SSLCertificateGenerator;
 // for some itger thingd
 import java.io.File;
 import java.io.IOException;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Timer;
 import java.util.TimerTask;
+import java.util.prefs.Preferences;
 // fxml thing
 import javafx.application.Platform;
 import javafx.fxml.FXML;
@@ -18,7 +24,11 @@ import javafx.scene.control.*;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.Node;
+import javafx.scene.input.DragEvent;
+import javafx.scene.input.TransferMode;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
+import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.stage.DirectoryChooser;
@@ -66,14 +76,28 @@ public class MainController {
 
   // Statistics then what fos
   @FXML private HBox statsSection;
-  @FXML private Label requestsLabel;
+  @FXML private Label dataSentLabel;
   @FXML private Label downloadsLabel;
   @FXML private Label activeConnectionsLabel;
   @FXML private Label timeRemainingLabel;
+
+  // Live transfers panel, filled from the server's TransferTracker every second
+  @FXML private VBox optionsCard;
+  @FXML private VBox transfersCard;
+  @FXML private VBox transfersList;
+  @FXML private Label transfersEmpty;
+  @FXML private Label transfersCountLabel;
+  @FXML private Label httpsHintLabel;
+  @FXML private FontIcon copyIcon;
+  private final Map<Long, TransferRow> transferRows = new HashMap<>();
+  private static final int MAX_TRANSFER_ROWS = 5;
+
+  // Remembers folder, options and theme between launches (~/.java/.userPrefs on Linux)
+  private final Preferences prefs = Preferences.userNodeForPackage(MainController.class);
   // understand the javafxml
   private Stage stage;
   private File selectedFolder;
-  private HttpsFileServer fileServer;
+  private AsyncFileServer fileServer;
   private boolean isDarkTheme = false;
   private int currentPort;
   private Timer statsUpdateTimer;
@@ -119,16 +143,43 @@ public class MainController {
     qrCodeImageView.setVisible(false);
     setServerState("Idle", false);
 
-    // Set HTTPS as default
-    if (httpsCheck != null) {
-      httpsCheck.setSelected(true);
+    for (Node n : new Node[] {optionsCard, transfersCard, transfersEmpty}) {
+      if (n != null) {
+        n.managedProperty().bind(n.visibleProperty());
+      }
     }
 
-    // Set default theme (change isDarkTheme to true for dark mode default)
-    isDarkTheme = true; // false = light (default), true = dark
+    // Restore last session's choices (HTTPS on by default)
+    httpsCheck.setSelected(prefs.getBoolean("https", true));
+    autoShutdownCheck.setSelected(prefs.getBoolean("autoStop", true));
+    httpsCheck.selectedProperty().addListener((o, a, on) -> prefs.putBoolean("https", on));
+    autoShutdownCheck.selectedProperty().addListener((o, a, on) -> prefs.putBoolean("autoStop", on));
+
+    // A Java runtime without jdk.crypto.ec can't do HTTPS that phones accept
+    if (!SSLCertificateGenerator.httpsSupported()) {
+      httpsCheck.setSelected(false);
+      httpsCheck.setDisable(true);
+      httpsCheck.setUserData("unsupported");
+      if (httpsHintLabel != null) {
+        httpsHintLabel.setText(
+            "Not available in this build: its Java runtime is missing jdk.crypto.ec.");
+      }
+    }
+
+    isDarkTheme = prefs.getBoolean("dark", true);
     updateThemeIcon();
 
-    updateStatus("Choose a folder to start sharing", "info");
+    String last = prefs.get("folder", null);
+    if (last != null && new File(last).isDirectory()) {
+      setFolder(new File(last));
+    } else {
+      updateStatus("Choose a folder to start sharing", "info");
+    }
+
+    // Drop a folder anywhere on the window to share it
+    rootContainer.setOnDragOver(this::handleDragOver);
+    rootContainer.setOnDragExited(e -> rootContainer.getStyleClass().remove("drag-over"));
+    rootContainer.setOnDragDropped(this::handleDragDropped);
 
     // Check network on startup
     checkNetwork();
@@ -136,6 +187,11 @@ public class MainController {
 
   public void setStage(Stage stage) {
     this.stage = stage;
+  }
+
+  /** Theme to open with (remembered from last time). */
+  public boolean isDarkTheme() {
+    return isDarkTheme;
   }
 
   // the netwok section
@@ -194,13 +250,44 @@ public class MainController {
     File folder = directoryChooser.showDialog(stage);
 
     if (folder != null) {
-      selectedFolder = folder;
-      folderPathLabel.setText(folder.getAbsolutePath());
-      folderPathLabel.getStyleClass().remove("folder-empty");
-      startServerButton.setDisable(false);
-      updateStatus("Folder selected: " + folder.getName(), "success");
-      logger.info("Selected folder: {}", folder.getAbsolutePath());
+      setFolder(folder);
     }
+  }
+
+  private void setFolder(File folder) {
+    selectedFolder = folder;
+    folderPathLabel.setText(folder.getAbsolutePath());
+    folderPathLabel.getStyleClass().remove("folder-empty");
+    startServerButton.setDisable(fileServer != null);
+    prefs.put("folder", folder.getAbsolutePath());
+    updateStatus("Ready to share " + folder.getName(), "info");
+    logger.info("Selected folder: {}", folder.getAbsolutePath());
+  }
+
+  private void handleDragOver(DragEvent e) {
+    if (fileServer == null
+        && e.getDragboard().hasFiles()
+        && e.getDragboard().getFiles().get(0).isDirectory()) {
+      e.acceptTransferModes(TransferMode.LINK, TransferMode.COPY);
+      if (!rootContainer.getStyleClass().contains("drag-over")) {
+        rootContainer.getStyleClass().add("drag-over");
+      }
+    }
+    e.consume();
+  }
+
+  private void handleDragDropped(DragEvent e) {
+    rootContainer.getStyleClass().remove("drag-over");
+    boolean ok = false;
+    if (fileServer == null && e.getDragboard().hasFiles()) {
+      File f = e.getDragboard().getFiles().get(0);
+      if (f.isDirectory()) {
+        setFolder(f);
+        ok = true;
+      }
+    }
+    e.setDropCompleted(ok);
+    e.consume();
   }
 
   @FXML
@@ -221,27 +308,14 @@ public class MainController {
     useHttps = httpsCheck != null && httpsCheck.isSelected();
     int preferredPort = useHttps ? PREFERRED_PORT_HTTPS : PREFERRED_PORT_HTTP;
 
-    // Show HTTPS certificate warning
-    if (useHttps) {
-      Alert alert = new Alert(Alert.AlertType.INFORMATION);
-      alert.setTitle("HTTPS Security");
-      alert.setHeaderText("Self-Signed Certificate");
-      alert.setContentText(
-          "The server will use a self-signed SSL certificate.\n\n"
-              + "Mobile browsers will show a security warning.\n"
-              + "Click 'Advanced' → 'Proceed' to continue.\n\n"
-              + "This is normal for local HTTPS servers.");
-      alert.showAndWait();
-    }
+    // (The certificate warning is explained inline next to the link instead of a popup.)
 
     try {
       // Disable buttons during startup
       startServerButton.setDisable(true);
       selectFolderButton.setDisable(true);
       autoShutdownCheck.setDisable(true);
-      if (httpsCheck != null) {
-        httpsCheck.setDisable(true);
-      }
+      httpsCheck.setDisable(true);
       serverProgress.setVisible(true);
       setServerState("Starting", false);
 
@@ -257,7 +331,7 @@ public class MainController {
                   int timeout = autoShutdown ? AUTO_SHUTDOWN_MINUTES : 0;
 
                   fileServer =
-                      new HttpsFileServer(
+                      new AsyncFileServer(
                           preferredPort,
                           selectedFolder,
                           timeout,
@@ -369,10 +443,10 @@ public class MainController {
       startServerButton.setDisable(false);
       selectFolderButton.setDisable(false);
       autoShutdownCheck.setDisable(false);
-      if (httpsCheck != null) {
-        httpsCheck.setDisable(false);
-      }
+      httpsCheck.setDisable(httpsCheck.getUserData() != null);
       setServerState("Idle", false);
+      transferRows.clear();
+      transfersList.getChildren().clear();
 
       updateStatus("Stopped sharing", "info");
       logger.info("Server stopped manually");
@@ -384,7 +458,7 @@ public class MainController {
         () -> {
           logger.info("Auto-shutdown triggered due to inactivity");
 
-          Alert alert = new Alert(Alert.AlertType.INFORMATION);
+          Alert alert = themed(new Alert(Alert.AlertType.INFORMATION));
           alert.setTitle("Server Auto-Shutdown");
           alert.setHeaderText("Inactivity Timeout");
           alert.setContentText(
@@ -403,6 +477,7 @@ public class MainController {
   @FXML
   private void handleThemeToggle() {
     isDarkTheme = !isDarkTheme;
+    prefs.putBoolean("dark", isDarkTheme);
     switchTheme();
   }
 
@@ -418,6 +493,13 @@ public class MainController {
       clipboard.setContent(content);
 
       updateStatus("Link copied", "success");
+      if (copyIcon != null) {
+        copyIcon.setIconLiteral("fth-check");
+        javafx.animation.PauseTransition back =
+            new javafx.animation.PauseTransition(javafx.util.Duration.seconds(1.5));
+        back.setOnFinished(e -> copyIcon.setIconLiteral("fth-copy"));
+        back.play();
+      }
       logger.info("URL copied to clipboard: {}", url);
     }
   }
@@ -443,31 +525,31 @@ public class MainController {
         new TimerTask() {
           @Override
           public void run() {
-            if (fileServer != null) {
-              ConnectionMonitor.ConnectionStats stats = fileServer.getConnectionStats();
-              ConnectionMonitor monitor = fileServer.getConnectionMonitor();
+            AsyncFileServer server = fileServer;
+            if (server != null) {
+              ConnectionMonitor.ConnectionStats stats = server.getConnectionStats();
+              ConnectionMonitor monitor = server.getConnectionMonitor();
+              TransferTracker tracker = server.getTransfers();
+              List<TransferTracker.Snapshot> rows = tracker.snapshot();
+              long bytes = tracker.totalBytesSent();
+              int files = tracker.filesSent();
 
               Platform.runLater(
                   () -> {
-                    if (requestsLabel != null) {
-                      requestsLabel.setText(String.valueOf(stats.getTotalRequests()));
+                    if (fileServer != server) {
+                      return; // stopped in the meantime
                     }
-                    if (downloadsLabel != null) {
-                      downloadsLabel.setText(String.valueOf(stats.getTotalDownloads()));
+                    downloadsLabel.setText(String.valueOf(files));
+                    dataSentLabel.setText(formatBytes(bytes));
+                    activeConnectionsLabel.setText(String.valueOf(stats.getActiveConnections()));
+                    long remaining = monitor.getRemainingTime();
+                    if (remaining >= 0) {
+                      timeRemainingLabel.setText(
+                          String.format("%02d:%02d", remaining / 60, remaining % 60));
+                    } else {
+                      timeRemainingLabel.setText("Off");
                     }
-                    if (activeConnectionsLabel != null) {
-                      activeConnectionsLabel.setText(String.valueOf(stats.getActiveConnections()));
-                    }
-                    if (timeRemainingLabel != null && monitor != null) {
-                      long remaining = monitor.getRemainingTime();
-                      if (remaining >= 0) {
-                        long minutes = remaining / 60;
-                        long seconds = remaining % 60;
-                        timeRemainingLabel.setText(String.format("%02d:%02d", minutes, seconds));
-                      } else {
-                        timeRemainingLabel.setText("--");
-                      }
-                    }
+                    updateTransfers(rows);
                   });
             }
           }
@@ -519,6 +601,12 @@ public class MainController {
     if (statsSection != null) {
       statsSection.setVisible(running);
     }
+    if (transfersCard != null) {
+      transfersCard.setVisible(running);
+    }
+    if (optionsCard != null) {
+      optionsCard.setVisible(!running);
+    }
     if (portInfoLabel != null && !running) {
       portInfoLabel.setVisible(false);
     }
@@ -556,9 +644,7 @@ public class MainController {
     startServerButton.setDisable(false);
     selectFolderButton.setDisable(false);
     autoShutdownCheck.setDisable(false);
-    if (httpsCheck != null) {
-      httpsCheck.setDisable(false);
-    }
+    httpsCheck.setDisable(httpsCheck.getUserData() != null);
     serverProgress.setVisible(false);
     setServerState("Idle", false);
   }
@@ -569,10 +655,21 @@ public class MainController {
     statusLabel.getStyleClass().add("status-" + type);
   }
 
+  /** Make a dialog use the app's own stylesheets, so it matches the light/dark theme. */
+  private Alert themed(Alert alert) {
+    if (rootContainer.getScene() != null) {
+      alert.getDialogPane().getStylesheets().setAll(rootContainer.getScene().getStylesheets());
+      alert.initOwner(rootContainer.getScene().getWindow());
+    }
+    alert.getDialogPane().getStyleClass().add("hs-dialog");
+    alert.setGraphic(null);
+    return alert;
+  }
+
   private void showError(String message) {
     updateStatus(message, "error");
 
-    Alert alert = new Alert(Alert.AlertType.ERROR);
+    Alert alert = themed(new Alert(Alert.AlertType.ERROR));
     alert.setTitle("Error");
     alert.setHeaderText(null);
     alert.setContentText(message);
@@ -580,11 +677,108 @@ public class MainController {
   }
 
   private void showWarning(String title, String message) {
-    Alert alert = new Alert(Alert.AlertType.WARNING);
+    Alert alert = themed(new Alert(Alert.AlertType.WARNING));
     alert.setTitle(title);
     alert.setHeaderText(null);
     alert.setContentText(message);
     alert.showAndWait();
+  }
+
+  // ------------------------------------------------------------------ transfers panel
+
+  /** Sync the rows with the latest snapshot: active first, then most recent. */
+  private void updateTransfers(List<TransferTracker.Snapshot> all) {
+    long active = all.stream().filter(t -> t.state() == TransferTracker.State.ACTIVE).count();
+    transfersCountLabel.setText(active == 0 ? "" : active + " active");
+
+    List<TransferTracker.Snapshot> shown =
+        all.stream()
+            .sorted(
+                (a, b) ->
+                    Boolean.compare(
+                        b.state() == TransferTracker.State.ACTIVE,
+                        a.state() == TransferTracker.State.ACTIVE))
+            .limit(MAX_TRANSFER_ROWS)
+            .toList();
+    transfersEmpty.setVisible(shown.isEmpty());
+
+    List<Node> nodes = new java.util.ArrayList<>();
+    Map<Long, TransferRow> keep = new HashMap<>();
+    for (TransferTracker.Snapshot t : shown) {
+      TransferRow row = transferRows.computeIfAbsent(t.id(), id -> new TransferRow());
+      row.update(t);
+      keep.put(t.id(), row);
+      nodes.add(row.root);
+    }
+    transferRows.clear();
+    transferRows.putAll(keep);
+    if (!transfersList.getChildren().equals(nodes)) {
+      transfersList.getChildren().setAll(nodes);
+    }
+  }
+
+  /** One file being sent: name, progress bar, and "device · speed · amount". */
+  private static final class TransferRow {
+    final VBox root = new VBox(6);
+    final Label name = new Label();
+    final Label percent = new Label();
+    final ProgressBar bar = new ProgressBar(0);
+    final Label meta = new Label();
+
+    TransferRow() {
+      name.getStyleClass().add("transfer-name");
+      name.setMaxWidth(Double.MAX_VALUE);
+      name.setMinWidth(0);
+      HBox.setHgrow(name, Priority.ALWAYS);
+      percent.getStyleClass().add("transfer-meta");
+      percent.setMinWidth(Region.USE_PREF_SIZE);
+      bar.getStyleClass().add("transfer-bar");
+      bar.setMaxWidth(Double.MAX_VALUE);
+      meta.getStyleClass().add("transfer-meta");
+      HBox top = new HBox(8, name, percent);
+      top.setAlignment(javafx.geometry.Pos.BASELINE_LEFT);
+      root.getChildren().addAll(top, bar, meta);
+    }
+
+    void update(TransferTracker.Snapshot t) {
+      name.setText(t.fileName());
+      bar.setProgress(t.progress());
+      bar.getStyleClass().removeAll("bar-done", "bar-stopped");
+      String detail;
+      switch (t.state()) {
+        case ACTIVE:
+          percent.setText(Math.round(t.progress() * 100) + "%");
+          detail =
+              formatBytes((long) t.bytesPerSecond())
+                  + "/s · "
+                  + formatBytes((long) (t.progress() * t.size()))
+                  + " of "
+                  + formatBytes(t.size());
+          break;
+        case DONE:
+          percent.setText("Done");
+          bar.getStyleClass().add("bar-done");
+          detail = formatBytes(t.size());
+          break;
+        default:
+          percent.setText("Stopped");
+          bar.getStyleClass().add("bar-stopped");
+          detail = "at " + Math.round(t.progress() * 100) + "% of " + formatBytes(t.size());
+      }
+      meta.setText(t.device() + " · " + detail);
+    }
+  }
+
+  static String formatBytes(long bytes) {
+    if (bytes < 1024) return bytes + " B";
+    double v = bytes;
+    String[] units = {"KB", "MB", "GB", "TB"};
+    int i = -1;
+    do {
+      v /= 1024;
+      i++;
+    } while (v >= 1024 && i < units.length - 1);
+    return (v >= 100 ? String.format("%.0f", v) : String.format("%.1f", v)) + " " + units[i];
   }
 
   public void cleanup() {

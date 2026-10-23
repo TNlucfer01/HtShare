@@ -19,6 +19,10 @@
 		<javafx.version>21.0.1</javafx.version>
 	</properties>
 
+	<!--
+	  The file server is plain Java NIO.2 (java.nio.channels.Asynchronous*), so it needs no
+	  HTTP library. Ikonli supplies the Feather icons used in the UI.
+	-->
 	<dependencies>
 		<!-- JavaFX Dependencies -->
 		<dependency>
@@ -41,12 +45,6 @@
 			<version>${javafx.version}</version>
 		</dependency>
 
-		<!-- NanoHTTPD - Lightweight HTTP Server -->
-		<dependency>
-			<groupId>org.nanohttpd</groupId>
-			<artifactId>nanohttpd</artifactId>
-			<version>2.3.1</version>
-		</dependency>
 
 		<!-- ZXing - QR Code Generation -->
 		<dependency>
@@ -65,12 +63,6 @@
 			<artifactId>junit-jupiter</artifactId>
 			<version>5.10.2</version>
 			<scope>test</scope>
-		</dependency>
-		<!-- for the https and http with non blocking -->
-		<dependency>
-			<groupId>io.undertow</groupId>
-			<artifactId>undertow-core</artifactId>
-			<version>2.3.12.Final</version>
 		</dependency>
 
 		<!-- Logging -->
@@ -96,27 +88,8 @@
 		</dependency>
 		<dependency>
 			<groupId>org.kordamp.ikonli</groupId>
-			<artifactId>ikonli-materialdesign2-pack</artifactId>
-			<version>12.3.1</version>
-		</dependency>
-		<dependency>
-			<groupId>org.kordamp.ikonli</groupId>
 			<artifactId>ikonli-feather-pack</artifactId>
 			<version>12.3.1</version>
-		</dependency>
-		<!-- Ikonli JavaFX support -->
-
-		<!-- FontAwesome icon pack -->
-		<dependency>
-			<groupId>org.kordamp.ikonli</groupId>
-			<artifactId>ikonli-fontawesome5-pack</artifactId>
-			<version>12.3.1</version>
-		</dependency>
-		<!-- JSON Processing -->
-		<dependency>
-			<groupId>com.google.code.gson</groupId>
-			<artifactId>gson</artifactId>
-			<version>2.10.1</version>
 		</dependency>
 	</dependencies>
 
@@ -128,8 +101,6 @@
 				<artifactId>maven-compiler-plugin</artifactId>
 				<version>3.11.0</version>
 				<configuration>
-					<argLine>--add-exports
-						java.base/sun.security.x509=ALL-UNNAMED</argLine>
 					<source>17</source>
 					<target>17</target>
 				</configuration>
@@ -141,9 +112,6 @@
 				<artifactId>javafx-maven-plugin</artifactId>
 				<version>0.0.8</version>
 				<configuration>
-					<additionalArgs>--add-exports
-						java.base/sun.security.x509=ALL-UNNAMED --add-opens
-						java.base/sun.security.x509=ALL-UNNAMED</additionalArgs>
 					<mainClass>com.htshare.MainApp</mainClass>
 				</configuration>
 			</plugin>

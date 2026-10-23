@@ -444,3 +444,80 @@
 	-fx-background-radius: 6;
 	-fx-padding: 5 8;
 }
+
+/* ---------- Transfers ---------- */
+.transfer-name {
+	-fx-font-family: "Inter Medium";
+	-fx-text-overrun: center-ellipsis;
+}
+
+.transfer-meta {
+	-fx-text-fill: -hs-muted;
+	-fx-font-size: 12px;
+}
+
+.transfer-bar {
+	-fx-pref-height: 4;
+	-fx-min-height: 4;
+	-fx-max-height: 4;
+	-fx-padding: 0;
+}
+
+.transfer-bar > .track {
+	-fx-background-color: -hs-surface-2;
+	-fx-background-insets: 0;
+	-fx-background-radius: 2;
+}
+
+.transfer-bar > .bar {
+	-fx-background-color: -hs-primary;
+	-fx-background-insets: 0;
+	-fx-background-radius: 2;
+	-fx-padding: 0;
+}
+
+.transfer-bar.bar-done > .bar {
+	-fx-background-color: -hs-live;
+}
+
+.transfer-bar.bar-stopped > .bar {
+	-fx-background-color: -hs-faint;
+}
+
+/* ---------- Drag a folder onto the window ---------- */
+.drag-over .field {
+	-fx-border-color: -hs-primary;
+	-fx-border-width: 1.5;
+	-fx-background-color: -hs-surface-2;
+}
+
+/* ---------- Dialogs (alerts pick up the app stylesheets) ---------- */
+.hs-dialog {
+	-fx-background-color: -hs-surface;
+	-fx-padding: 4;
+}
+
+.hs-dialog > .header-panel {
+	-fx-background-color: transparent;
+	-fx-padding: 16 20 4 20;
+}
+
+.hs-dialog > .header-panel .label {
+	-fx-font-family: "Inter SemiBold";
+	-fx-font-size: 14px;
+}
+
+.hs-dialog > .content.label {
+	-fx-text-fill: -hs-muted;
+	-fx-padding: 8 20 8 20;
+}
+
+.hs-dialog > .button-bar > .container {
+	-fx-padding: 8 16 14 16;
+}
+
+.hs-dialog .button:default {
+	-fx-background-color: -hs-primary;
+	-fx-text-fill: -hs-primary-text;
+	-fx-border-color: transparent;
+}
