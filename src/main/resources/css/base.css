@@ -1,0 +1,523 @@
+/*
+ * HtShare — structure and components.
+ * Colors come from the -hs-* variables defined in dark-theme.css / light-theme.css,
+ * which are loaded after this file. Keep every color here as a variable.
+ */
+
+/* ---------- Base ---------- */
+.root {
+	-fx-font-family: "Inter";
+	-fx-font-size: 13px;
+	-fx-background-color: -hs-bg;
+	/* keep Modena's built-ins (scrollbars, focus, selection) in step with the palette */
+	-fx-base: -hs-surface-2;
+	-fx-background: -hs-bg;
+	-fx-control-inner-background: -hs-surface;
+	-fx-accent: -hs-primary;
+	-fx-focus-color: -hs-focus;
+	-fx-faint-focus-color: transparent;
+}
+
+.label {
+	-fx-text-fill: -hs-text;
+}
+
+/* ---------- Top bar ---------- */
+.topbar {
+	-fx-background-color: -hs-surface;
+	-fx-border-color: transparent transparent -hs-border transparent;
+	-fx-border-width: 0 0 1 0;
+	-fx-padding: 12 16 12 20;
+	-fx-spacing: 10;
+	-fx-alignment: center-left;
+}
+
+.brand {
+	-fx-font-family: "Inter SemiBold";
+	-fx-font-size: 15px;
+}
+
+.brand-sub {
+	-fx-text-fill: -hs-muted;
+}
+
+/* Server state pill: Idle / Starting / Live */
+.pill {
+	-fx-background-color: -hs-surface-2;
+	-fx-background-radius: 999;
+	-fx-border-color: -hs-border;
+	-fx-border-radius: 999;
+	-fx-padding: 4 10 4 9;
+	-fx-spacing: 7;
+	-fx-alignment: center;
+}
+
+.pill .label {
+	-fx-text-fill: -hs-muted;
+	-fx-font-family: "Inter Medium";
+	-fx-font-size: 12px;
+}
+
+.dot {
+	-fx-min-width: 7;
+	-fx-min-height: 7;
+	-fx-max-width: 7;
+	-fx-max-height: 7;
+	-fx-background-radius: 999;
+	-fx-background-color: -hs-faint;
+}
+
+.pill-live {
+	-fx-background-color: -hs-live-soft;
+	-fx-border-color: transparent;
+}
+
+.pill-live .label {
+	-fx-text-fill: -hs-live;
+}
+
+.pill-live .dot {
+	-fx-background-color: -hs-live;
+}
+
+/* ---------- Layout ---------- */
+.scroll-pane,
+.scroll-pane > .viewport {
+	-fx-background-color: transparent;
+	-fx-background-insets: 0;
+	-fx-padding: 0;
+}
+
+.body {
+	-fx-padding: 24;
+	-fx-spacing: 20;
+}
+
+.column {
+	-fx-spacing: 16;
+}
+
+/* ---------- Cards ---------- */
+.card {
+	-fx-background-color: -hs-surface;
+	-fx-background-radius: 12;
+	-fx-border-color: -hs-border;
+	-fx-border-radius: 12;
+	-fx-border-width: 1;
+	-fx-padding: 18;
+	-fx-spacing: 14;
+}
+
+.card-title {
+	-fx-font-family: "Inter SemiBold";
+	-fx-font-size: 13px;
+}
+
+.hint {
+	-fx-text-fill: -hs-muted;
+	-fx-font-size: 12px;
+}
+
+.divider {
+	-fx-min-height: 1;
+	-fx-max-height: 1;
+	-fx-background-color: -hs-border;
+}
+
+/* ---------- Folder field ---------- */
+.field {
+	-fx-background-color: -hs-bg;
+	-fx-background-radius: 8;
+	-fx-border-color: -hs-border;
+	-fx-border-radius: 8;
+	-fx-padding: 0 12;
+	-fx-min-height: 34;
+	-fx-pref-height: 34;
+	-fx-spacing: 8;
+	-fx-alignment: center-left;
+}
+
+.folder-path {
+	-fx-font-family: "Monospaced";
+	-fx-font-size: 12px;
+	-fx-text-fill: -hs-text;
+}
+
+.folder-empty {
+	-fx-font-family: "Inter";
+	-fx-font-size: 13px;
+	-fx-text-fill: -hs-faint;
+}
+
+/* ---------- Options (CheckBox drawn as a switch) ---------- */
+.option {
+	-fx-spacing: 12;
+	-fx-alignment: center-left;
+}
+
+.option-title {
+	-fx-font-family: "Inter Medium";
+}
+
+.switch {
+	-fx-padding: 0;
+	-fx-label-padding: 0;
+	-fx-cursor: hand;
+}
+
+.switch > .box {
+	-fx-background-color: -hs-border-strong;
+	-fx-background-insets: 0;
+	-fx-background-radius: 999;
+	-fx-border-width: 0;
+	-fx-padding: 3 17 3 3;
+}
+
+.switch:selected > .box {
+	-fx-background-color: -hs-primary;
+	-fx-padding: 3 3 3 17;
+}
+
+.switch > .box > .mark {
+	-fx-background-color: -hs-knob;
+	-fx-background-insets: 0;
+	-fx-shape: "M0,5 a5,5 0 1,0 10,0 a5,5 0 1,0 -10,0";
+	-fx-scale-shape: true;
+	-fx-padding: 6;
+}
+
+.switch:selected > .box > .mark {
+	-fx-background-color: -hs-primary-text;
+}
+
+.switch:disabled {
+	-fx-opacity: 0.45;
+}
+
+/* ---------- Buttons ---------- */
+.button,
+.toggle-button {
+	-fx-font-family: "Inter Medium";
+	-fx-font-size: 13px;
+	-fx-text-fill: -hs-text;
+	-fx-background-color: -hs-surface-2;
+	-fx-background-insets: 0;
+	-fx-background-radius: 8;
+	-fx-border-color: -hs-border;
+	-fx-border-radius: 8;
+	-fx-border-width: 1;
+	-fx-padding: 0 14;
+	-fx-min-height: 34;
+	-fx-pref-height: 34;
+	-fx-cursor: hand;
+}
+
+.button:hover,
+.toggle-button:hover {
+	-fx-background-color: -hs-border;
+}
+
+.button:focused,
+.toggle-button:focused {
+	-fx-border-color: -hs-focus;
+}
+
+.button:disabled {
+	-fx-opacity: 0.4;
+}
+
+.button-primary {
+	-fx-background-color: -hs-primary;
+	-fx-text-fill: -hs-primary-text;
+	-fx-border-color: transparent;
+	-fx-min-height: 40;
+	-fx-pref-height: 40;
+}
+
+.button-primary:hover {
+	-fx-background-color: -hs-primary-hover;
+}
+
+.button-danger {
+	-fx-background-color: transparent;
+	-fx-text-fill: -hs-danger;
+	-fx-border-color: -hs-border-strong;
+	-fx-min-height: 40;
+	-fx-pref-height: 40;
+}
+
+.button-danger:hover {
+	-fx-background-color: -hs-danger-soft;
+	-fx-border-color: -hs-danger;
+}
+
+.icon-button,
+.icon-button:selected {
+	-fx-background-color: transparent;
+	-fx-border-color: transparent;
+	-fx-padding: 0;
+	-fx-min-width: 32;
+	-fx-pref-width: 32;
+	-fx-min-height: 32;
+	-fx-pref-height: 32;
+}
+
+.icon-button:hover,
+.icon-button:focused {
+	-fx-background-color: -hs-surface-2;
+	-fx-border-color: transparent;
+}
+
+.ikonli-font-icon {
+	-fx-icon-color: -hs-muted;
+}
+
+.icon-button:hover .ikonli-font-icon {
+	-fx-icon-color: -hs-text;
+}
+
+.field .ikonli-font-icon {
+	-fx-icon-color: -hs-faint;
+}
+
+/* ---------- Stats ---------- */
+.stat {
+	-fx-spacing: 4;
+	-fx-padding: 0 0 0 16;
+	-fx-border-color: transparent transparent transparent -hs-border;
+	-fx-border-width: 0 0 0 1;
+}
+
+.stat-first {
+	-fx-padding: 0;
+	-fx-border-width: 0;
+}
+
+.stat-label {
+	-fx-text-fill: -hs-muted;
+	-fx-font-size: 12px;
+}
+
+.stat-value {
+	-fx-font-family: "Inter SemiBold";
+	-fx-font-size: 20px;
+}
+
+/* ---------- Connect panel ---------- */
+.qr-frame {
+	-fx-background-color: -hs-bg;
+	-fx-background-radius: 12;
+	-fx-border-color: -hs-border-strong;
+	-fx-border-style: segments(4, 4);
+	-fx-border-radius: 12;
+	-fx-min-width: 248;
+	-fx-min-height: 248;
+	-fx-max-width: 248;
+	-fx-max-height: 248;
+}
+
+/* when a code is showing, the frame becomes the code's white quiet zone */
+.qr-live {
+	-fx-background-color: #ffffff;
+	-fx-border-color: -hs-border;
+	-fx-border-style: solid;
+}
+
+.qr-placeholder {
+	-fx-spacing: 10;
+	-fx-alignment: center;
+	-fx-padding: 24;
+}
+
+.qr-placeholder .ikonli-font-icon {
+	-fx-icon-color: -hs-faint;
+}
+
+.qr-placeholder .label {
+	-fx-text-fill: -hs-muted;
+	-fx-text-alignment: center;
+}
+
+.url-box {
+	-fx-padding: 0 2 0 12;
+}
+
+.url {
+	-fx-font-family: "Monospaced";
+	-fx-font-size: 12px;
+}
+
+.progress-indicator {
+	-fx-progress-color: -hs-text;
+}
+
+/* ---------- Status bar ---------- */
+.statusbar {
+	-fx-background-color: -hs-surface;
+	-fx-border-color: -hs-border transparent transparent transparent;
+	-fx-border-width: 1 0 0 0;
+	-fx-padding: 4 10 4 20;
+	-fx-spacing: 10;
+	-fx-alignment: center-left;
+}
+
+.statusbar .label,
+.statusbar .hyperlink {
+	-fx-font-size: 12px;
+}
+
+.status-info,
+.network-success {
+	-fx-text-fill: -hs-muted;
+}
+
+.status-success {
+	-fx-text-fill: -hs-live;
+}
+
+.status-error,
+.network-error {
+	-fx-text-fill: -hs-danger;
+}
+
+.statusbar .icon-button {
+	-fx-min-width: 26;
+	-fx-pref-width: 26;
+	-fx-min-height: 26;
+	-fx-pref-height: 26;
+}
+
+.bar-sep {
+	-fx-min-width: 1;
+	-fx-max-width: 1;
+	-fx-min-height: 14;
+	-fx-max-height: 14;
+	-fx-background-color: -hs-border;
+}
+
+.hyperlink,
+.hyperlink:visited {
+	-fx-text-fill: -hs-muted;
+	-fx-border-color: transparent;
+	-fx-padding: 0;
+	-fx-underline: false;
+}
+
+.hyperlink:hover {
+	-fx-text-fill: -hs-text;
+}
+
+/* ---------- Scrollbars & tooltips ---------- */
+.scroll-bar:vertical,
+.scroll-bar:horizontal {
+	-fx-background-color: transparent;
+	-fx-pref-width: 10;
+}
+
+.scroll-bar .track,
+.scroll-bar .track-background {
+	-fx-background-color: transparent;
+}
+
+.scroll-bar .thumb {
+	-fx-background-color: -hs-border-strong;
+	-fx-background-insets: 2;
+	-fx-background-radius: 6;
+}
+
+.scroll-bar .increment-button,
+.scroll-bar .decrement-button {
+	-fx-padding: 0;
+}
+
+.scroll-bar .increment-arrow,
+.scroll-bar .decrement-arrow {
+	-fx-shape: null;
+	-fx-padding: 0;
+}
+
+.tooltip {
+	-fx-background-color: #18181b;
+	-fx-text-fill: #ededef;
+	-fx-font-family: "Inter";
+	-fx-font-size: 11px;
+	-fx-background-radius: 6;
+	-fx-padding: 5 8;
+}
+
+/* ---------- Transfers ---------- */
+.transfer-name {
+	-fx-font-family: "Inter Medium";
+	-fx-text-overrun: center-ellipsis;
+}
+
+.transfer-meta {
+	-fx-text-fill: -hs-muted;
+	-fx-font-size: 12px;
+}
+
+.transfer-bar {
+	-fx-pref-height: 4;
+	-fx-min-height: 4;
+	-fx-max-height: 4;
+	-fx-padding: 0;
+}
+
+.transfer-bar > .track {
+	-fx-background-color: -hs-surface-2;
+	-fx-background-insets: 0;
+	-fx-background-radius: 2;
+}
+
+.transfer-bar > .bar {
+	-fx-background-color: -hs-primary;
+	-fx-background-insets: 0;
+	-fx-background-radius: 2;
+	-fx-padding: 0;
+}
+
+.transfer-bar.bar-done > .bar {
+	-fx-background-color: -hs-live;
+}
+
+.transfer-bar.bar-stopped > .bar {
+	-fx-background-color: -hs-faint;
+}
+
+/* ---------- Drag a folder onto the window ---------- */
+.drag-over .field {
+	-fx-border-color: -hs-primary;
+	-fx-border-width: 1.5;
+	-fx-background-color: -hs-surface-2;
+}
+
+/* ---------- Dialogs (alerts pick up the app stylesheets) ---------- */
+.hs-dialog {
+	-fx-background-color: -hs-surface;
+	-fx-padding: 4;
+}
+
+.hs-dialog > .header-panel {
+	-fx-background-color: transparent;
+	-fx-padding: 16 20 4 20;
+}
+
+.hs-dialog > .header-panel .label {
+	-fx-font-family: "Inter SemiBold";
+	-fx-font-size: 14px;
+}
+
+.hs-dialog > .content.label {
+	-fx-text-fill: -hs-muted;
+	-fx-padding: 8 20 8 20;
+}
+
+.hs-dialog > .button-bar > .container {
+	-fx-padding: 8 16 14 16;
+}
+
+.hs-dialog .button:default {
+	-fx-background-color: -hs-primary;
+	-fx-text-fill: -hs-primary-text;
+	-fx-border-color: transparent;
+}

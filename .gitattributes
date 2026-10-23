@@ -1,0 +1,10 @@
+# Keep LF everywhere, so shell scripts and package install scripts still run
+# when checked out on Windows (Git for Windows would otherwise convert to CRLF).
+* text=auto eol=lf
+*.cmd text eol=crlf
+*.bat text eol=crlf
+*.png binary
+*.ico binary
+*.ttf binary
+*.jar binary
+*.AppImage binary

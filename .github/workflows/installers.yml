@@ -1,0 +1,116 @@
+# Builds HtShare installers on real Windows and Linux machines.
+#
+#   Pull requests / manual run → installers are attached to the run as downloadable artifacts
+#   Push a tag like v1.1.0     → installers are also attached to that GitHub Release
+#
+# The tag must match <version> in pom.xml.
+name: Installers
+
+on:
+  push:
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write # attach files to releases
+
+jobs:
+  package:
+    name: ${{ matrix.name }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Windows
+            os: windows-2022
+            fx: windows-x64
+          - name: Linux
+            # oldest supported Ubuntu: the .deb/.AppImage then also run on newer distros
+            os: ubuntu-22.04
+            fx: linux-x64
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash # Git Bash on Windows, so packaging/package.sh runs on both
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin # includes the jmods jlink needs
+          java-version: "21"
+          cache: maven
+
+      - name: Check tag matches pom.xml version
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          POM_VERSION="$(grep -m1 -o '<version>[^<]*' pom.xml | sed 's/<version>//')"
+          if [ "${GITHUB_REF_NAME#v}" != "$POM_VERSION" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME doesn't match pom.xml version $POM_VERSION"
+            exit 1
+          fi
+
+      - name: Download JavaFX jmods
+        run: |
+          FX="$(grep -o '<javafx.version>[^<]*' pom.xml | sed 's/<javafx.version>//')"
+          curl -fsSL -o "$RUNNER_TEMP/fx.zip" \
+            "https://download2.gluonhq.com/openjfx/$FX/openjfx-${FX}_${{ matrix.fx }}_bin-jmods.zip"
+          unzip -q "$RUNNER_TEMP/fx.zip" -d "$RUNNER_TEMP"
+          echo "JAVAFX_JMODS=$RUNNER_TEMP/javafx-jmods-$FX" >> "$GITHUB_ENV"
+
+      - name: Run tests
+        run: mvn -B -ntp test
+
+      - name: Show test failures
+        if: failure()
+        run: |
+          # turn each failing test into an annotation, visible on the PR
+          for f in target/surefire-reports/*.txt; do
+            grep -q -E "FAILURE|ERROR" "$f" || continue
+            msg="$(grep -A3 -E '<<< (FAILURE|ERROR)' "$f" | tr '\n' ' ' | cut -c1-900)"
+            echo "::error title=$(basename "$f" .txt)::$msg"
+          done
+
+      - name: Install Linux packaging tools
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq rpm fakeroot
+          curl -fsSL -o appimagetool \
+            https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage
+          chmod +x appimagetool && sudo mv appimagetool /usr/local/bin/
+          # runners have no FUSE; let AppImages unpack themselves instead
+          echo "APPIMAGE_EXTRACT_AND_RUN=1" >> "$GITHUB_ENV"
+
+      - name: Put WiX on PATH (needed for .msi)
+        if: runner.os == 'Windows'
+        run: |
+          WIX="/c/Program Files (x86)/WiX Toolset v3.14/bin"
+          if [ ! -f "$WIX/candle.exe" ]; then
+            choco install wixtoolset --version 3.14.1 -y --no-progress
+          fi
+          cygpath -w "$WIX" >> "$GITHUB_PATH"
+
+      - name: Build installers
+        run: packaging/package.sh
+
+      - name: List what was built
+        run: |
+          for f in build/dist/*; do
+            echo "::notice title=Built ${{ matrix.name }}::$(basename "$f") ($(du -h "$f" | cut -f1))"
+          done
+          # a release must have the main installer for each platform
+          if [ "$RUNNER_OS" = Windows ]; then ls build/dist/*.msi >/dev/null; else ls build/dist/*.deb build/dist/*.rpm build/dist/*.AppImage >/dev/null; fi
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: HtShare-${{ matrix.name }}
+          path: build/dist/*
+          if-no-files-found: error
+
+      - name: Attach to release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: build/dist/*

@@ -1,258 +1,171 @@
-# 📁 Desktop File Share
+# HtShare
 
-A minimalist JavaFX desktop application for sharing files over your local network with QR code support. Features a beautiful UI with dark/light themes and instant mobile connectivity.
+Share a folder from your computer to any phone or laptop on the same network. Pick a folder, press **Start sharing**, scan the QR code. No app is needed on the other device, only its browser.
 
-![Java](https://img.shields.io/badge/Java-17+-orange.svg)
-![JavaFX](https://img.shields.io/badge/JavaFX-21-blue.svg)
-![Maven](https://img.shields.io/badge/Maven-3.6+-red.svg)
-![License](https://img.shields.io/badge/License-MIT-green.svg)
+![HtShare desktop app while sharing](screenshots/main-window.png)
 
-## ✨ Features
+## Features
 
-- 🎨 **Minimalist Design** - Clean, modern interface
-- 🌓 **Dark/Light Theme** - Toggle between themes instantly
-- 📱 **QR Code Connection** - Scan to connect from mobile
-- 🔒 **HTTPS Support** - Encrypted connections with self-signed certificates
-- 🚀 **Fast File Sharing** - Direct HTTP/HTTPS file server
-- 📂 **Folder Navigation** - Browse directories easily
-- 🔐 **Secure Transfer** - TLS 1.2+ encryption for sensitive files
-- 💻 **Cross-Platform** - Works on Windows, macOS, Linux
-- 🌐 **Network Verification** - Auto-detects and validates network
-- 📊 **Real-time Statistics** - Track requests, downloads, connections
-- ⏱️ **Auto-Shutdown** - Configurable inactivity timeout (5 min)
-- 🔌 **Dynamic Ports** - Auto-finds available ports (8443/8080+)
-- 📋 **Copy URL** - One-click clipboard copy
-- 🔗 **GitHub Integration** - Quick access to project page
+- **QR code connect**: scan with the phone camera, or copy the link
+- **Asynchronous transfers**: many devices can download at once, and slow ones never hold up the rest (see [How transfers work](#how-transfers-work))
+- **Resumable downloads**: byte-range support, so interrupted downloads continue where they stopped and videos can seek
+- **Live transfers panel**: every download with its device, speed and progress; finished and stopped ones stay listed
+- **HTTPS by default**: TLS 1.3 / 1.2 with a self-signed certificate made at start-up, with HTTP available as a switch
+- **Auto-stop**: sharing stops after 5 idle minutes, but never in the middle of a download
+- **Drag and drop**: drop a folder onto the window to share it
+- **Remembers** your last folder, options and theme
+- **Dark and light themes** in the desktop app; the phone page follows the phone's own setting
 
-## 🔒 Security
+## The phone side
 
-### HTTPS Mode (Default)
-- **TLS 1.2+ Encryption** - All data encrypted in transit
-- **Self-Signed Certificates** - Auto-generated on server start
-- **2048-bit RSA** - Industry-standard encryption
-- **Privacy Protection** - Files not visible on network
+Folders first, file sizes, and a filter box for big folders. Tap a photo, video, song, PDF or text file to open it in the browser; tap the arrow to download it. The header switches to **Offline** if you stop sharing.
 
-### Important Notes
-⚠️ **Self-signed certificates** will show browser warnings on mobile devices. This is normal and expected for local HTTPS servers.
+![Phone view, light and dark](screenshots/phone.png)
 
-**To connect:**
-1. Scan QR code
-2. Click "Advanced" → "Proceed" in browser warning
-3. Browse files securely
+## Install
 
-**When to use HTTPS:**
-- ✅ Sharing sensitive documents
-- ✅ On public/shared Wi-Fi
-- ✅ Privacy is important
+Download from the [Releases page](https://github.com/TNlucfer01/htshare/releases). Every installer bundles its own Java, so nothing else is needed.
 
-**When HTTP is fine:**
-- ✅ Sharing public files
-- ✅ Trusted home network only
-- ✅ Maximum transfer speed needed
+| System | File | How |
+| --- | --- | --- |
+| **Windows 10/11** | `HtShare-<ver>.msi` | Double-click. Installs for your user only (no admin), adds Start menu + desktop shortcuts. |
+| Windows, no install | `HtShare-<ver>-windows-x64.zip` | Unzip anywhere, run `HtShare.exe`. |
+| **Ubuntu, Debian, Mint, Pop!_OS** | `htshare_<ver>_amd64.deb` | `sudo apt install ./htshare_<ver>_amd64.deb` |
+| **Fedora, openSUSE** | `htshare-<ver>-1.x86_64.rpm` | `sudo dnf install ./htshare-<ver>-1.x86_64.rpm` |
+| **Any Linux** (Arch, etc.) | `HtShare-<ver>-x86_64.AppImage` | `chmod +x HtShare-*.AppImage && ./HtShare-*.AppImage` |
 
-## 🖼️ Screenshots
+The `.deb` and `.rpm` put HtShare in your app menu and add an `htshare` command for the terminal.
 
-### Light Theme
-```
-┌─────────────────────────────────────┐
-│  📁 File Share            🌙        │
-│  Share files securely over network  │
-├─────────────────────────────────────┤
-│                                     │
-│  Select Folder                      │
-│  [Browse...] /path/to/folder        │
-│                                     │
-│  Server Control                     │
-│  [Start Server] [Stop Server]       │
-│                                     │
-│  Scan QR Code to Connect            │
-│  ┌─────────────────────┐           │
-│  │  ▪▪▪▪▪▪▪  ▪▪▪▪▪▪▪  │           │
-│  │  ▪     ▪  ▪     ▪  │           │
-│  │  ▪ ▪▪▪ ▪  ▪ ▪▪▪ ▪  │           │
-│  │  ▪▪▪▪▪▪▪  ▪▪▪▪▪▪▪  │           │
-│  └─────────────────────┘           │
-│  http://192.168.1.100:8080         │
-│                                     │
-│  ✓ Server running                  │
-└─────────────────────────────────────┘
-```
+**First run on Windows:**
+- **SmartScreen:** the installer isn't code-signed, so SmartScreen may warn. Click **More info → Run anyway**.
+- **Firewall:** when you first start sharing, Windows Firewall asks whether HtShare may use the network. Allow it on **Private networks**, or phones can't connect.
 
-## 🚀 Quick Start
+### From source
 
-### Prerequisites
+Requires JDK 17+ and Maven 3.6+.
 
-- Java 17 or higher
-- Maven 3.6+
-
-### Installation
-
-1. **Clone or download the project**
 ```bash
-git clone <your-repo-url>
-cd desktop-file-share
+git clone https://github.com/TNlucfer01/htshare.git
+cd htshare
+mvn javafx:run          # run
+mvn test                # tests (includes real HTTP/HTTPS downloads)
+mvn clean package       # fat jar at target/htshare-<ver>.jar
 ```
 
-2. **Build the project**
+### Building the installers
+
+GitHub Actions builds them on real Windows and Linux machines (`.github/workflows/installers.yml`):
+
+- every pull request gets the installers as downloadable artifacts
+- pushing a tag such as `v1.1.0` (it must match `<version>` in `pom.xml`) attaches them to that release
+
+To build locally, run the same script on the platform you want installers for (Git Bash on Windows):
+
 ```bash
-mvn clean package
+JAVAFX_JMODS=~/javafx-jmods-21.0.1 packaging/package.sh
 ```
 
-3. **Run the application**
-```bash
-mvn javafx:run
-```
+It needs:
+- JDK 21 with jmods (Temurin has them)
+- the [JavaFX 21 jmods](https://gluonhq.com/products/javafx/) for your OS
+- on Windows, [WiX Toolset 3](https://wixtoolset.org/docs/wix3/) for the `.msi`
+- on Linux, `rpmbuild` for the `.rpm` and `appimagetool` for the AppImage (each is skipped if missing)
 
-Or run the JAR directly:
-```bash
-java -jar target/desktop-file-share-1.0.0.jar
-```
+Output goes to `build/dist/`.
 
-## 📖 Usage
+The bundled Java runtime **must include `jdk.crypto.ec`**: phone browsers only accept ECDHE key exchange, so HTTPS fails without it. The script includes it and checks for it. Don't add a `logback.xml`: reading one pulls in `java.naming`, which the trimmed runtime leaves out. The log level is set in `MainApp` instead (`-Dhtshare.debug=true` for request-level logs).
 
-1. **Launch the application**
-2. **Click "Browse..."** to select a folder to share
-3. **Click "Start Server"** to begin sharing
-4. **Scan the QR code** with your mobile device's camera
-5. **Browse and download files** through your mobile browser
+## How transfers work
 
-### Manual Connection
-
-If QR code doesn't work, manually enter the URL shown in the app:
-```
-http://YOUR_IP:8080
-```
-
-## 🔧 Configuration
-
-### Change Server Port
-
-Edit `MainController.java`:
-```java
-private static final int DEFAULT_PORT = 8080; // Your port here
-```
-
-### Customize Themes
-
-Modify CSS files in `src/main/resources/css/`:
-- `light-theme.css` - Light mode colors
-- `dark-theme.css` - Dark mode colors
-
-## 🏗️ Project Structure
+The file server is written on Java's NIO.2 asynchronous channels. It uses no web framework, so it adds no dependencies and runs in the small bundled runtime.
 
 ```
-desktop-file-share/
-├── src/
-│   ├── main/
-│   │   ├── java/com/fileshare/
-│   │   │   ├── MainApp.java              # Entry point
-│   │   │   ├── server/
-│   │   │   │   └── FileServer.java        # HTTP server
-│   │   │   ├── ui/
-│   │   │   │   └── MainController.java    # UI logic
-│   │   │   └── util/
-│   │   │       ├── NetworkUtils.java      # Network helpers
-│   │   │       └── QRCodeGenerator.java   # QR generation
-│   │   └── resources/
-│   │       ├── fxml/main.fxml             # UI layout
-│   │       ├── css/
-│   │       │   ├── light-theme.css        # Light theme
-│   │       │   └── dark-theme.css         # Dark theme
-│   │       └── logback.xml                # Logging config
-│   └── test/
-└── pom.xml                                 # Maven config
+phone ──TCP──▶ AsynchronousServerSocketChannel ── accept ──▶ HttpConnection (one per client)
+                        │                                       │  read head → route → respond → next request
+                  2 I/O threads                                 ▼
+                  (epoll; a thread only runs                FileResponder
+                   when a socket is ready)                   loop: read 256 KB from disk (async)
+                                                                   → write it to the client (async)
+                                                                   → only then read the next chunk
 ```
 
-## 🛠️ Technologies
+- **No thread per client.** Two I/O threads serve every connection. A thread only does work when the OS reports that a socket is ready, so 40 parallel downloads and a few stalled phones use the same 2 threads.
+- **Backpressure.** The next chunk is read from disk only after the client has accepted the previous one, so memory stays at one chunk per transfer however slow the phone is.
+- **HTTPS stays async too.** `TlsTransport` runs Java's `SSLEngine` over the same async socket, and the CPU-heavy part of the handshake runs on a worker pool.
+- **Disk reads** run on a small worker pool. Java has no true async file I/O on Linux, so this keeps them off the network threads.
+- **Timeouts** cut off clients that go silent: 30 s idle, 60 s for a client that stops reading.
 
-- **JavaFX** - Modern UI framework
-- **NanoHTTPD** - Lightweight HTTP server
-- **ZXing** - QR code generation
-- **SLF4J + Logback** - Logging
-- **Maven** - Build tool
+Measured on loopback: 40 parallel 50 MB HTTP downloads at about 530 MB/s combined, and 20 parallel HTTPS downloads at about 580 MB/s. The thread count stayed constant throughout, and every file arrived bit-for-bit intact.
 
-## 🔒 Security
+## Security
 
-⚠️ **Important:** This application is designed for local network use only.
+The share is read-only (GET/HEAD only). Requests can't leave the shared folder: `..`, hidden dot-files and dot-folders, and symlinks pointing outside the folder all return 404. Shared `.html` and `.svg` files are served sandboxed, so they can't run scripts. Anyone on the same network with the link can browse the folder. There is no password yet, so share only what you mean to, and don't expose HtShare to the internet.
 
-- No authentication by default
-- HTTP (not HTTPS) protocol
-- Anyone on your network can access shared files
-- Do not expose to the internet
+With HTTPS the phone shows a certificate warning the first time; tap **Advanced → Proceed**. The connection is still encrypted. The warning only means the certificate isn't from a public authority.
 
-For production use, implement:
-- Authentication (JWT tokens)
-- HTTPS/TLS encryption
-- Access control lists
-- Rate limiting
+## Project structure
 
-## 🐛 Troubleshooting
+```
+src/main/java/com/htshare/
+├── MainApp.java                    entry point, window, fonts, logging
+├── ui/MainController.java          desktop UI logic, transfers panel
+├── server/
+│   ├── AsyncFileServer.java        accepts connections, routing, path safety, lifecycle
+│   ├── FileResponder.java          async file streaming, ranges, caching headers
+│   ├── TransferTracker.java        per-device progress and speed for the UI
+│   ├── ConnectionMonitor.java      stats and idle auto-stop
+│   ├── DeviceNames.java            "Android · 192.168.1.23" labels
+│   ├── Helper.java                 phone page rendering, MIME types
+│   └── net/
+│       ├── Transport.java          async byte pipe interface
+│       ├── PlainTransport.java     HTTP over AsynchronousSocketChannel
+│       ├── TlsTransport.java       HTTPS: SSLEngine over the same socket
+│       ├── HttpConnection.java     keep-alive request loop
+│       ├── HttpRequest.java        request parsing
+│       └── HttpExchange.java       response writing
+└── util/                           network detection, QR codes, certificate generation
 
-### Server Won't Start
+src/main/resources/
+├── fxml/main.fxml                  desktop layout
+├── css/base.css                    desktop components and layout
+├── css/{dark,light}-theme.css      palettes (-hs-* colors only)
+├── template/home.html              phone page
+└── fonts/                          Inter (SIL OFL 1.1)
 
-**Check if port is in use:**
-```bash
-# Windows
-netstat -ano | findstr :8080
-
-# Linux/Mac
-lsof -i :8080
+packaging/package.sh                jar → jlink runtime → .msi/.zip (Windows), .deb/.rpm/AppImage (Linux)
+packaging/linux/                    menu entry, AppStream metadata, install scripts
+packaging/icons/                    app icon (.svg, .png, .ico)
+.github/workflows/installers.yml    builds all installers on Windows + Linux
 ```
 
-### Mobile Can't Connect
+## Troubleshooting
 
-1. Ensure both devices are on the same Wi-Fi network
-2. Check firewall settings (allow port 8080)
-3. Try manual connection with IP address
+**Phone can't connect**: both devices must be on the same Wi-Fi, and the computer's firewall must allow the port shown in the link (8443 or 8080 by default).
+- Windows: allow HtShare when the firewall asks, or in *Windows Security → Firewall → Allow an app*.
+- Linux:
 
-### QR Code Not Showing
+  ```bash
+  sudo ufw allow 8443/tcp   # or 8080 for HTTP
+  ```
 
-1. Verify server started successfully
-2. Check console for errors
-3. Ensure network connection is active
+**Phone shows the wrong address / can't connect on Windows**: HtShare skips VM, WSL, Docker and VPN adapters when choosing the address for the QR code. If it still picks the wrong one, disconnect the VPN and press the refresh icon in the status bar.
 
-## 📊 Performance
+**HTTPS switch is greyed out**: this build's Java runtime lacks `jdk.crypto.ec`. Use a release installer or rebuild with `packaging/package.sh`, or share over HTTP on a trusted network.
 
-- **Memory:** ~15MB footprint
-- **CPU:** Minimal usage
-- **Network:** Direct streaming, no buffering
-- **Concurrent:** Handles multiple connections
+**Port already in use**: HtShare picks the next free port automatically and tells you which one it used.
 
-## 🗺️ Roadmap
+## Roadmap
 
-- [ ] File upload from mobile
-- [ ] Multi-folder selection
-- [ ] Transfer history
-- [ ] Password protection
-- [ ] HTTPS support
-- [ ] Custom port in GUI
-- [ ] Drag & drop folders
-- [ ] System tray integration
+- [ ] Upload from phone to computer
+- [ ] Password / PIN protection
+- [ ] Share multiple folders
+- [ ] Download a whole folder as a zip
+- [ ] System tray
 
-## 🤝 Contributing
+## Built with
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+Java NIO.2 · [JavaFX](https://openjfx.io/) · [ZXing](https://github.com/zxing/zxing) · [Ikonli](https://kordamp.org/ikonli/) (Feather icons) · [Inter](https://rsms.me/inter/)
 
-1. Fork the repository
-2. Create your feature branch
-3. Commit your changes
-4. Push to the branch
-5. Open a Pull Request
+## License
 
-## 📄 License
-
-This project is open source and available under the MIT License.
-
-## 🙏 Acknowledgments
-
-- [JavaFX](https://openjfx.io/) - UI framework
-- [NanoHTTPD](https://github.com/NanoHttpd/nanohttpd) - HTTP server
-- [ZXing](https://github.com/zxing/zxing) - QR code library
-
-## 📧 Contact
-
-For questions or feedback, please open an issue on GitHub.
-
----
-
-**Made with ❤️ using JavaFX**
+MIT. The Inter font is under the SIL Open Font License, see `src/main/resources/fonts/OFL.txt`.
