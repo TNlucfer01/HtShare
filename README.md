@@ -1,258 +1,105 @@
-# 📁 Desktop File Share
+# HtShare
 
-A minimalist JavaFX desktop application for sharing files over your local network with QR code support. Features a beautiful UI with dark/light themes and instant mobile connectivity.
+Share a folder from your computer to any phone or laptop on the same network. Pick a folder, press **Start sharing**, scan the QR code. No app is needed on the other device, only its browser.
 
-![Java](https://img.shields.io/badge/Java-17+-orange.svg)
-![JavaFX](https://img.shields.io/badge/JavaFX-21-blue.svg)
-![Maven](https://img.shields.io/badge/Maven-3.6+-red.svg)
-![License](https://img.shields.io/badge/License-MIT-green.svg)
+![HtShare desktop app](screenshots/main-window.png)
 
-## ✨ Features
+## Features
 
-- 🎨 **Minimalist Design** - Clean, modern interface
-- 🌓 **Dark/Light Theme** - Toggle between themes instantly
-- 📱 **QR Code Connection** - Scan to connect from mobile
-- 🔒 **HTTPS Support** - Encrypted connections with self-signed certificates
-- 🚀 **Fast File Sharing** - Direct HTTP/HTTPS file server
-- 📂 **Folder Navigation** - Browse directories easily
-- 🔐 **Secure Transfer** - TLS 1.2+ encryption for sensitive files
-- 💻 **Cross-Platform** - Works on Windows, macOS, Linux
-- 🌐 **Network Verification** - Auto-detects and validates network
-- 📊 **Real-time Statistics** - Track requests, downloads, connections
-- ⏱️ **Auto-Shutdown** - Configurable inactivity timeout (5 min)
-- 🔌 **Dynamic Ports** - Auto-finds available ports (8443/8080+)
-- 📋 **Copy URL** - One-click clipboard copy
-- 🔗 **GitHub Integration** - Quick access to project page
+- **QR code connect**: scan with the phone camera, or copy the link
+- **HTTPS by default**: TLS with a self-signed certificate generated at start-up, with HTTP available as a switch
+- **Auto-stop**: sharing stops after 5 minutes with no activity (optional)
+- **Live stats**: requests, downloads, connected devices, time until auto-stop
+- **Network check**: detects the active interface and warns when there isn't one
+- **Free port lookup**: starts at 8443 (HTTPS) or 8080 (HTTP) and moves up if the port is busy
+- **Dark and light themes** in the desktop app; the phone page follows the phone's own setting
 
-## 🔒 Security
+## The phone side
 
-### HTTPS Mode (Default)
-- **TLS 1.2+ Encryption** - All data encrypted in transit
-- **Self-Signed Certificates** - Auto-generated on server start
-- **2048-bit RSA** - Industry-standard encryption
-- **Privacy Protection** - Files not visible on network
+The connected device gets a plain, fast file browser: folders first, file sizes, one tap to download.
 
-### Important Notes
-⚠️ **Self-signed certificates** will show browser warnings on mobile devices. This is normal and expected for local HTTPS servers.
+![Phone view, light and dark](screenshots/phone.png)
 
-**To connect:**
-1. Scan QR code
-2. Click "Advanced" → "Proceed" in browser warning
-3. Browse files securely
+## Install
 
-**When to use HTTPS:**
-- ✅ Sharing sensitive documents
-- ✅ On public/shared Wi-Fi
-- ✅ Privacy is important
+### AppImage (Linux)
 
-**When HTTP is fine:**
-- ✅ Sharing public files
-- ✅ Trusted home network only
-- ✅ Maximum transfer speed needed
-
-## 🖼️ Screenshots
-
-### Light Theme
-```
-┌─────────────────────────────────────┐
-│  📁 File Share            🌙        │
-│  Share files securely over network  │
-├─────────────────────────────────────┤
-│                                     │
-│  Select Folder                      │
-│  [Browse...] /path/to/folder        │
-│                                     │
-│  Server Control                     │
-│  [Start Server] [Stop Server]       │
-│                                     │
-│  Scan QR Code to Connect            │
-│  ┌─────────────────────┐           │
-│  │  ▪▪▪▪▪▪▪  ▪▪▪▪▪▪▪  │           │
-│  │  ▪     ▪  ▪     ▪  │           │
-│  │  ▪ ▪▪▪ ▪  ▪ ▪▪▪ ▪  │           │
-│  │  ▪▪▪▪▪▪▪  ▪▪▪▪▪▪▪  │           │
-│  └─────────────────────┘           │
-│  http://192.168.1.100:8080         │
-│                                     │
-│  ✓ Server running                  │
-└─────────────────────────────────────┘
-```
-
-## 🚀 Quick Start
-
-### Prerequisites
-
-- Java 17 or higher
-- Maven 3.6+
-
-### Installation
-
-1. **Clone or download the project**
 ```bash
-git clone <your-repo-url>
-cd desktop-file-share
+chmod +x HtShare-x86_64.AppImage
+./HtShare-x86_64.AppImage
 ```
 
-2. **Build the project**
+The AppImage bundles its own Java runtime, so nothing else needs to be installed.
+
+### From source
+
+Requires Java 17+ and Maven 3.6+.
+
 ```bash
-mvn clean package
+git clone https://github.com/TNlucfer01/htshare.git
+cd htshare
+mvn javafx:run          # run
+mvn clean package       # fat jar at target/htshare-1.0.0.jar
 ```
 
-3. **Run the application**
+## Using HTTPS
+
+The certificate is self-signed, so the phone's browser shows a warning the first time. Tap **Advanced → Proceed** to continue. The connection is still encrypted; the warning only means the certificate isn't from a public authority.
+
+- Keep HTTPS on for anything private, or on shared or public Wi-Fi.
+- Turn it off on a trusted home network if you want the fastest transfers and no warning.
+
+Anyone on the same network who has the link can browse the shared folder. There is no password yet, so share only what you mean to, and don't expose HtShare to the internet.
+
+## Project structure
+
+```
+src/main/java/com/htshare/
+├── MainApp.java                 entry point, window, fonts
+├── ui/MainController.java       desktop UI logic
+├── server/
+│   ├── HttpsFileServer.java     file server used by the app (NanoHTTPD, HTTP + HTTPS)
+│   ├── ConnectionMonitor.java   stats and idle auto-stop
+│   ├── Helper.java              phone page rendering, MIME types, ports
+│   └── HttpFileServer.java      older JDK-HttpServer implementation (not used by the UI)
+└── util/                        network detection, QR codes, certificate generation
+
+src/main/resources/
+├── fxml/main.fxml               desktop layout
+├── css/base.css                 desktop components and layout
+├── css/dark-theme.css           dark palette  (-hs-* colors)
+├── css/light-theme.css          light palette (-hs-* colors)
+├── template/home.html           phone page
+└── fonts/                       Inter (SIL OFL 1.1)
+```
+
+To change colors, edit only the `-hs-*` variables in `dark-theme.css` / `light-theme.css`; every component in `base.css` reads from them.
+
+## Troubleshooting
+
+**Phone can't connect**: both devices must be on the same Wi-Fi. Check that your firewall allows the port shown in the link (8443 or 8080 by default):
+
 ```bash
-mvn javafx:run
+sudo ufw allow 8443/tcp   # or 8080 for HTTP
 ```
 
-Or run the JAR directly:
-```bash
-java -jar target/desktop-file-share-1.0.0.jar
-```
+**Port already in use**: HtShare picks the next free port automatically and tells you which one it used.
 
-## 📖 Usage
+**No network detected**: connect to Wi-Fi or Ethernet, then press the refresh icon in the status bar.
 
-1. **Launch the application**
-2. **Click "Browse..."** to select a folder to share
-3. **Click "Start Server"** to begin sharing
-4. **Scan the QR code** with your mobile device's camera
-5. **Browse and download files** through your mobile browser
+## Roadmap
 
-### Manual Connection
-
-If QR code doesn't work, manually enter the URL shown in the app:
-```
-http://YOUR_IP:8080
-```
-
-## 🔧 Configuration
-
-### Change Server Port
-
-Edit `MainController.java`:
-```java
-private static final int DEFAULT_PORT = 8080; // Your port here
-```
-
-### Customize Themes
-
-Modify CSS files in `src/main/resources/css/`:
-- `light-theme.css` - Light mode colors
-- `dark-theme.css` - Dark mode colors
-
-## 🏗️ Project Structure
-
-```
-desktop-file-share/
-├── src/
-│   ├── main/
-│   │   ├── java/com/fileshare/
-│   │   │   ├── MainApp.java              # Entry point
-│   │   │   ├── server/
-│   │   │   │   └── FileServer.java        # HTTP server
-│   │   │   ├── ui/
-│   │   │   │   └── MainController.java    # UI logic
-│   │   │   └── util/
-│   │   │       ├── NetworkUtils.java      # Network helpers
-│   │   │       └── QRCodeGenerator.java   # QR generation
-│   │   └── resources/
-│   │       ├── fxml/main.fxml             # UI layout
-│   │       ├── css/
-│   │       │   ├── light-theme.css        # Light theme
-│   │       │   └── dark-theme.css         # Dark theme
-│   │       └── logback.xml                # Logging config
-│   └── test/
-└── pom.xml                                 # Maven config
-```
-
-## 🛠️ Technologies
-
-- **JavaFX** - Modern UI framework
-- **NanoHTTPD** - Lightweight HTTP server
-- **ZXing** - QR code generation
-- **SLF4J + Logback** - Logging
-- **Maven** - Build tool
-
-## 🔒 Security
-
-⚠️ **Important:** This application is designed for local network use only.
-
-- No authentication by default
-- HTTP (not HTTPS) protocol
-- Anyone on your network can access shared files
-- Do not expose to the internet
-
-For production use, implement:
-- Authentication (JWT tokens)
-- HTTPS/TLS encryption
-- Access control lists
-- Rate limiting
-
-## 🐛 Troubleshooting
-
-### Server Won't Start
-
-**Check if port is in use:**
-```bash
-# Windows
-netstat -ano | findstr :8080
-
-# Linux/Mac
-lsof -i :8080
-```
-
-### Mobile Can't Connect
-
-1. Ensure both devices are on the same Wi-Fi network
-2. Check firewall settings (allow port 8080)
-3. Try manual connection with IP address
-
-### QR Code Not Showing
-
-1. Verify server started successfully
-2. Check console for errors
-3. Ensure network connection is active
-
-## 📊 Performance
-
-- **Memory:** ~15MB footprint
-- **CPU:** Minimal usage
-- **Network:** Direct streaming, no buffering
-- **Concurrent:** Handles multiple connections
-
-## 🗺️ Roadmap
-
-- [ ] File upload from mobile
-- [ ] Multi-folder selection
+- [ ] Upload from phone to computer
+- [ ] Password / PIN protection
+- [ ] Share multiple folders
+- [ ] Drag and drop a folder onto the window
 - [ ] Transfer history
-- [ ] Password protection
-- [ ] HTTPS support
-- [ ] Custom port in GUI
-- [ ] Drag & drop folders
-- [ ] System tray integration
+- [ ] System tray
 
-## 🤝 Contributing
+## Built with
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+[JavaFX](https://openjfx.io/) · [NanoHTTPD](https://github.com/NanoHttpd/nanohttpd) · [ZXing](https://github.com/zxing/zxing) · [Ikonli](https://kordamp.org/ikonli/) (Feather icons) · [Inter](https://rsms.me/inter/)
 
-1. Fork the repository
-2. Create your feature branch
-3. Commit your changes
-4. Push to the branch
-5. Open a Pull Request
+## License
 
-## 📄 License
-
-This project is open source and available under the MIT License.
-
-## 🙏 Acknowledgments
-
-- [JavaFX](https://openjfx.io/) - UI framework
-- [NanoHTTPD](https://github.com/NanoHttpd/nanohttpd) - HTTP server
-- [ZXing](https://github.com/zxing/zxing) - QR code library
-
-## 📧 Contact
-
-For questions or feedback, please open an issue on GitHub.
-
----
-
-**Made with ❤️ using JavaFX**
+MIT. The Inter font is under the SIL Open Font License, see `src/main/resources/fonts/OFL.txt`.

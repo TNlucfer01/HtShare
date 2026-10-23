@@ -1,0 +1,12 @@
+# Maven
+target/
+dependency-reduced-pom.xml
+
+# Partial / repeated downloads (wget appends .1, .2, …)
+*.AppImage.[0-9]*
+
+# Editors & OS
+.idea/
+.vscode/
+*.iml
+.DS_Store

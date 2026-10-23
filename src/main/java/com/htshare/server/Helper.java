@@ -3,6 +3,7 @@ package com.htshare.server;
 import com.sun.net.httpserver.HttpServer;
 import java.io.*;
 import java.net.InetSocketAddress;
+import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -90,7 +91,9 @@ public class Helper {
         .replace("<", "&lt;")
         .replace(">", "&gt;")
         .replace("\"", "&quot;")
-        .replace("'", "&#39;");
+        .replace("'", "&#39;")
+        // so a file named "{{fileList}}" can't be picked up as a template placeholder
+        .replace("{", "&#123;");
   }
 
   public String escapeJson(String text) {
@@ -101,10 +104,13 @@ public class Helper {
         .replace("\t", "\\t");
   }
 
+  /** Load a page template from the classpath, so it also works from the jar / AppImage. */
   public String loadTemplate(String name) {
-    try {
-      return Files.readString(
-          Paths.get("src/main/resources/template/" + name), StandardCharsets.UTF_8);
+    try (InputStream in = Helper.class.getResourceAsStream("/template/" + name)) {
+      if (in == null) {
+        throw new IOException("not on classpath");
+      }
+      return new String(in.readAllBytes(), StandardCharsets.UTF_8);
     } catch (IOException e) {
       throw new RuntimeException("Failed to load template: " + name, e);
     }
@@ -130,104 +136,147 @@ public class Helper {
     return preferredPort;
   }
 
-  public String Breadcrumb(String relativePath) {
-    StringBuilder html = new StringBuilder();
-    if (!relativePath.isEmpty()) {
-      html.append("<div class=\"breadcrumb\">");
-      html.append("<a href=\"/\">🏠 Home</a>");
-
-      String[] parts = relativePath.split("/");
-      String currentPath = "";
-      for (String part : parts) {
-        if (!part.isEmpty()) {
-          currentPath += "/" + part;
-          html.append(" / <a href=\"")
-              .append(currentPath)
-              .append("\">")
-              .append(escapeHtml(part))
-              .append("</a>");
-        }
-      }
-      html.append("</div>");
+  /** Percent-encode a relative path for use in an href, segment by segment. */
+  public String encodePath(String relativePath) {
+    StringBuilder out = new StringBuilder();
+    for (String part : relativePath.split("/")) {
+      if (part.isEmpty()) continue;
+      out.append('/').append(URLEncoder.encode(part, StandardCharsets.UTF_8).replace("+", "%20"));
     }
+    return out.length() == 0 ? "/" : out.toString();
+  }
+
+  /** Short label for the file-type badge on the phone page, e.g. "PDF", "MP4". */
+  public String fileBadge(String filename) {
+    int dot = filename.lastIndexOf('.');
+    if (dot <= 0 || dot == filename.length() - 1) return "FILE";
+    String ext = filename.substring(dot + 1).toUpperCase();
+    return ext.length() > 4 ? ext.substring(0, 4) : ext;
+  }
+
+  /** Broad file kind, used to tint the badge: image, video, audio, archive, doc, code, other. */
+  public String fileKind(String filename) {
+    String lower = filename.toLowerCase();
+    if (lower.matches(".*\\.(jpg|jpeg|png|gif|svg|bmp|webp|heic)$")) return "image";
+    if (lower.matches(".*\\.(mp4|avi|mov|mkv|wmv|flv|webm)$")) return "video";
+    if (lower.matches(".*\\.(mp3|wav|flac|aac|ogg|wma|m4a)$")) return "audio";
+    if (lower.matches(".*\\.(zip|rar|7z|tar|gz|xz|bz2|iso)$")) return "archive";
+    if (lower.matches(".*\\.(pdf|doc|docx|xls|xlsx|csv|ppt|pptx|txt|md|odt|ods)$")) return "doc";
+    if (lower.matches(".*\\.(html|css|js|ts|java|py|cpp|c|h|rs|go|sh|json|xml)$")) return "code";
+    return "other";
+  }
+
+  private static final String ICON_FOLDER =
+      "<svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z\"/></svg>";
+  private static final String ICON_CHEVRON =
+      "<svg class=\"end\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M9 6l6 6-6 6\"/></svg>";
+  private static final String ICON_DOWNLOAD =
+      "<svg class=\"end\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M12 4v11M7 10l5 5 5-5M5 20h14\"/></svg>";
+
+  /** Breadcrumb links back to the shared root; empty at the root itself. */
+  public String Breadcrumb(String rootName, String relativePath) {
+    if (relativePath.isEmpty()) {
+      return "";
+    }
+    StringBuilder html = new StringBuilder("<nav class=\"crumbs\" aria-label=\"Path\">");
+    html.append("<a href=\"/\">").append(escapeHtml(rootName)).append("</a>");
+
+    String[] parts = relativePath.split("/");
+    String currentPath = "";
+    for (int i = 0; i < parts.length - 1; i++) {
+      if (parts[i].isEmpty()) continue;
+      currentPath += (currentPath.isEmpty() ? "" : "/") + parts[i];
+      html.append("<span class=\"sep\">/</span><a href=\"")
+          .append(escapeHtml(encodePath(currentPath)))
+          .append("\">")
+          .append(escapeHtml(parts[i]))
+          .append("</a>");
+    }
+    html.append("</nav>");
     return html.toString();
+  }
+
+  /** Folders first, then files, both alphabetical. */
+  private File[] sortedEntries(File directory) {
+    File[] files = directory.listFiles(f -> !f.isHidden());
+    if (files == null) return new File[0];
+    java.util.Arrays.sort(
+        files,
+        (a, b) -> {
+          if (a.isDirectory() != b.isDirectory()) return a.isDirectory() ? -1 : 1;
+          return a.getName().compareToIgnoreCase(b.getName());
+        });
+    return files;
   }
 
   public String ListFiles(File directory, String relativePath) {
-    // File listing
-    StringBuilder html = new StringBuilder();
-    File[] files = directory.listFiles();
-
-    if (files == null || files.length == 0) {
-      html.append("<div class=\"empty\">📭 This folder is empty</div>");
-    } else {
-      // Sort files: directories first, then alphabetically
-      List<File> dirs = new ArrayList<>();
-      List<File> regularFiles = new ArrayList<>();
-
-      for (File f : files) {
-        if (f.isDirectory()) {
-          dirs.add(f);
-        } else {
-          regularFiles.add(f);
-        }
-      }
-
-      dirs.sort((a, b) -> a.getName().compareToIgnoreCase(b.getName()));
-      regularFiles.sort((a, b) -> a.getName().compareToIgnoreCase(b.getName()));
-
-      html.append("<ul class=\"file-list\">");
-
-      // Parent directory link
-      if (!relativePath.isEmpty()) {
-        String parentPath =
-            relativePath.contains("/")
-                ? relativePath.substring(0, relativePath.lastIndexOf("/"))
-                : "";
-        html.append("<li class=\"file-item\">");
-        html.append("<a href=\"/").append(parentPath).append("\">");
-        html.append("<span class=\"icon\">⬆️</span>");
-        html.append("<span class=\"name\">..</span>");
-        html.append("</a></li>");
-      }
-
-      // Directories
-      for (File dir : dirs) {
-        String path = relativePath.isEmpty() ? dir.getName() : relativePath + "/" + dir.getName();
-        html.append("<li class=\"file-item\">");
-        html.append("<a href=\"/").append(path).append("\">");
-        html.append("<span class=\"icon\">📁</span>");
-        html.append("<span class=\"name\">").append(escapeHtml(dir.getName())).append("</span>");
-        html.append("</a></li>");
-      }
-
-      // Files
-      for (File file : regularFiles) {
-        String path = relativePath.isEmpty() ? file.getName() : relativePath + "/" + file.getName();
-        html.append("<li class=\"file-item\">");
-        html.append("<a href=\"/").append(path).append("\" download>");
-        html.append("<span class=\"icon\">").append(getFileIcon(file.getName())).append("</span>");
-        html.append("<span class=\"name\">").append(escapeHtml(file.getName())).append("</span>");
-        html.append("<span class=\"size\">")
-            .append(formatFileSize(file.length()))
-            .append("</span>");
-        html.append("</a></li>");
-      }
-
-      html.append("</ul>");
+    File[] files = sortedEntries(directory);
+    if (files.length == 0) {
+      return "<div class=\"empty\">"
+          + ICON_FOLDER
+          + "<p>This folder is empty</p></div>";
     }
 
-    html.append("</div></body></html>");
+    StringBuilder html = new StringBuilder("<ul class=\"list\">");
+    for (File f : files) {
+      String path = relativePath.isEmpty() ? f.getName() : relativePath + "/" + f.getName();
+      String href = escapeHtml(encodePath(path));
+      String name = escapeHtml(f.getName());
+
+      if (f.isDirectory()) {
+        String[] children = f.list();
+        int count = children == null ? 0 : children.length;
+        html.append("<li><a class=\"row\" href=\"").append(href).append("\">")
+            .append("<span class=\"ico ico-folder\">").append(ICON_FOLDER).append("</span>")
+            .append("<span class=\"text\"><span class=\"name\">").append(name).append("</span>")
+            .append("<span class=\"meta\">").append(count).append(count == 1 ? " item" : " items")
+            .append("</span></span>")
+            .append(ICON_CHEVRON)
+            .append("</a></li>");
+      } else {
+        html.append("<li><a class=\"row\" href=\"").append(href).append("\" download>")
+            .append("<span class=\"ico ico-").append(fileKind(f.getName())).append("\">")
+            .append(escapeHtml(fileBadge(f.getName()))).append("</span>")
+            .append("<span class=\"text\"><span class=\"name\">").append(name).append("</span>")
+            .append("<span class=\"meta\">").append(formatFileSize(f.length()))
+            .append("</span></span>")
+            .append(ICON_DOWNLOAD)
+            .append("</a></li>");
+      }
+    }
+    html.append("</ul>");
     return html.toString();
   }
 
-  public String generateDirectoryHtml(File directory, String relativePath) {
-    String html = loadTemplate("home.html");
+  /** Summary under the folder title, e.g. "3 folders · 5 files". */
+  public String itemSummary(File directory) {
+    int dirs = 0, files = 0;
+    for (File f : sortedEntries(directory)) {
+      if (f.isDirectory()) dirs++;
+      else files++;
+    }
+    if (dirs == 0 && files == 0) return "Empty";
+    StringBuilder s = new StringBuilder();
+    if (dirs > 0) s.append(dirs).append(dirs == 1 ? " folder" : " folders");
+    if (files > 0) {
+      if (s.length() > 0) s.append(" · ");
+      s.append(files).append(files == 1 ? " file" : " files");
+    }
+    return s.toString();
+  }
 
+  public String generateDirectoryHtml(File directory, String relativePath) {
+    return generateDirectoryHtml(directory, relativePath, directory.getName());
+  }
+
+  /** Render the phone page. rootName labels the first breadcrumb link. */
+  public String generateDirectoryHtml(File directory, String relativePath, String rootName) {
+    String html = loadTemplate("home.html");
     html = html.replace("{{title}}", escapeHtml(directory.getName()));
     html = html.replace("{{folderName}}", escapeHtml(directory.getName()));
-    html = html.replace("{{breadcrumb}}", Breadcrumb(relativePath));
+    html = html.replace("{{itemSummary}}", escapeHtml(itemSummary(directory)));
+    html = html.replace("{{breadcrumb}}", Breadcrumb(rootName, relativePath));
     html = html.replace("{{fileList}}", ListFiles(directory, relativePath));
-    return html.toString();
+    return html;
   }
 }

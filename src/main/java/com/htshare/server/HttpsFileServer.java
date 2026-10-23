@@ -77,8 +77,8 @@ public class HttpsFileServer extends NanoHTTPD {
     logger.info("{} {} - {}", method, uri, session.getRemoteIpAddress());
 
     try {
-      // Decode URI
-      uri = URLDecoder.decode(uri, StandardCharsets.UTF_8);
+      // NanoHTTPD already percent-decodes the URI. Decoding it a second time
+      // broke names containing '+' or '%' (e.g. "c++ notes.txt").
 
       // Remove leading slash dont understand the woking of this condtion though
       if (uri.startsWith("/")) {
@@ -257,7 +257,7 @@ public class HttpsFileServer extends NanoHTTPD {
 
   /** Serve directory listing */
   private Response serveDirectoryListing(File directory, String relativePath) {
-    String html = helper.generateDirectoryHtml(directory, relativePath);
+    String html = helper.generateDirectoryHtml(directory, relativePath, rootDirectory.getName());
 
     Response response = newFixedLengthResponse(Response.Status.OK, "text/html", html);
     // why these headers

@@ -17,7 +17,9 @@ import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
+import javafx.scene.Node;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.stage.DirectoryChooser;
 import javafx.stage.Stage;
@@ -32,7 +34,7 @@ public class MainController {
   private static final int PREFERRED_PORT_HTTP = 8080;
   // why xo  we nee the 5 minuted timout when i have inactive one at the ConnectionMonitor
   private static final int AUTO_SHUTDOWN_MINUTES = 5;
-  private static final String GITHUB_URL = "https://github.com/TNLucifer";
+  private static final String GITHUB_URL = "https://github.com/TNlucfer01/htshare";
   // what are these @FXML dir even means
   // we are adding this wirht he fxml  with the id of the fx
   @FXML private VBox rootContainer;
@@ -56,6 +58,12 @@ public class MainController {
   @FXML private ProgressIndicator serverProgress;
   @FXML private Hyperlink githubLink;
 
+  // Top-bar state pill ("Idle" / "Starting" / "Live") and the QR panel
+  @FXML private HBox serverStatePill;
+  @FXML private Label serverStateLabel;
+  @FXML private StackPane qrFrame;
+  @FXML private VBox qrPlaceholder;
+
   // Statistics then what fos
   @FXML private HBox statsSection;
   @FXML private Label requestsLabel;
@@ -75,21 +83,41 @@ public class MainController {
   // for initialize but why do we need to add them at the front of the method
   @FXML
   public void initialize() {
-    stopServerButton.setDisable(true);
+    // Hidden nodes should not keep their space in the layout
+    for (Node n :
+        new Node[] {
+          startServerButton,
+          stopServerButton,
+          serverProgress,
+          urlContainer,
+          portInfoLabel,
+          statsSection
+        }) {
+      if (n != null) {
+        n.managedProperty().bind(n.visibleProperty());
+      }
+    }
+
+    // The QR frame shows a placeholder until a code exists
+    if (qrPlaceholder != null) {
+      qrPlaceholder.visibleProperty().bind(qrCodeImageView.visibleProperty().not());
+    }
+    if (qrFrame != null) {
+      qrCodeImageView
+          .visibleProperty()
+          .addListener(
+              (obs, was, showing) -> {
+                qrFrame.getStyleClass().remove("qr-live");
+                if (showing) {
+                  qrFrame.getStyleClass().add("qr-live");
+                }
+              });
+    }
+
+    setRunningUi(false);
     serverProgress.setVisible(false);
     qrCodeImageView.setVisible(false);
-
-    if (urlContainer != null) {
-      urlContainer.setVisible(false);
-    }
-
-    if (portInfoLabel != null) {
-      portInfoLabel.setVisible(false);
-    }
-
-    if (statsSection != null) {
-      statsSection.setVisible(false);
-    }
+    setServerState("Idle", false);
 
     // Set HTTPS as default
     if (httpsCheck != null) {
@@ -100,7 +128,7 @@ public class MainController {
     isDarkTheme = true; // false = light (default), true = dark
     updateThemeIcon();
 
-    updateStatus("Ready. Select a folder to share.", "info");
+    updateStatus("Choose a folder to start sharing", "info");
 
     // Check network on startup
     checkNetwork();
@@ -135,15 +163,14 @@ public class MainController {
                       // where does this message even show
                       String message =
                           String.format(
-                              "✓ Connected to %s: %s",
-                              networkType, currentNetwork.getAddress().getHostAddress());
+                              "%s · %s", networkType, currentNetwork.getAddress().getHostAddress());
                       networkStatusLabel.setText(message);
                       networkStatusLabel.getStyleClass().removeAll("network-error");
                       networkStatusLabel.getStyleClass().add("network-success");
 
                       logger.info("Network validated: {}", currentNetwork);
                     } else {
-                      networkStatusLabel.setText("⚠ " + result.getMessage());
+                      networkStatusLabel.setText(result.getMessage());
                       networkStatusLabel.getStyleClass().removeAll("network-success");
                       networkStatusLabel.getStyleClass().add("network-error");
 
@@ -169,6 +196,7 @@ public class MainController {
     if (folder != null) {
       selectedFolder = folder;
       folderPathLabel.setText(folder.getAbsolutePath());
+      folderPathLabel.getStyleClass().remove("folder-empty");
       startServerButton.setDisable(false);
       updateStatus("Folder selected: " + folder.getName(), "success");
       logger.info("Selected folder: {}", folder.getAbsolutePath());
@@ -212,11 +240,12 @@ public class MainController {
       selectFolderButton.setDisable(true);
       autoShutdownCheck.setDisable(true);
       if (httpsCheck != null) {
-        httpsCheck.setDisable(false);
+        httpsCheck.setDisable(true);
       }
       serverProgress.setVisible(true);
+      setServerState("Starting", false);
 
-      updateStatus("Starting " + (useHttps ? "HTTPS" : "HTTP") + " server...", "info");
+      updateStatus("Starting " + (useHttps ? "HTTPS" : "HTTP") + " server…", "info");
 
       boolean autoShutdown = autoShutdownCheck.isSelected();
 
@@ -261,16 +290,17 @@ public class MainController {
                             String portMsg = "";
                             if (currentPort != preferredPort) {
                               portMsg =
-                                  "ℹ Using port "
+                                  "Using port "
                                       + currentPort
-                                      + " (Port "
+                                      + " because "
                                       + preferredPort
-                                      + " was unavailable)";
+                                      + " was busy.";
                             }
                             if (useHttps) {
                               portMsg +=
-                                  (portMsg.isEmpty() ? "" : " • ")
-                                      + "🔒 HTTPS enabled with self-signed certificate";
+                                  (portMsg.isEmpty() ? "" : " ")
+                                      + "On the phone, tap Advanced → Proceed to accept the"
+                                      + " self-signed certificate.";
                             }
                             if (!portMsg.isEmpty()) {
                               portInfoLabel.setText(portMsg);
@@ -284,14 +314,15 @@ public class MainController {
                             startStatsUpdater();
                           }
 
-                          stopServerButton.setDisable(false);
+                          setRunningUi(true);
                           serverProgress.setVisible(false);
+                          setServerState("Live", true);
 
-                          String securityBadge = useHttps ? "🔒 HTTPS" : "HTTP";
-                          String statusMsg = securityBadge + " server running on " + serverUrl;
+                          String securityBadge = useHttps ? "HTTPS" : "HTTP";
+                          String statusMsg = "Sharing over " + securityBadge;
                           // then why do we need the inactive one
                           if (autoShutdown) {
-                            statusMsg += " • Auto-shutdown: " + AUTO_SHUTDOWN_MINUTES + " min idle";
+                            statusMsg += " · stops after " + AUTO_SHUTDOWN_MINUTES + " min idle";
                           }
 
                           updateStatus(statusMsg, "success");
@@ -334,15 +365,16 @@ public class MainController {
         statsSection.setVisible(false);
       }
 
-      stopServerButton.setDisable(true);
+      setRunningUi(false);
       startServerButton.setDisable(false);
       selectFolderButton.setDisable(false);
       autoShutdownCheck.setDisable(false);
       if (httpsCheck != null) {
         httpsCheck.setDisable(false);
       }
+      setServerState("Idle", false);
 
-      updateStatus("Server stopped", "info");
+      updateStatus("Stopped sharing", "info");
       logger.info("Server stopped manually");
     }
   }
@@ -385,7 +417,7 @@ public class MainController {
       content.putString(url);
       clipboard.setContent(content);
 
-      updateStatus("✓ URL copied to clipboard!", "success");
+      updateStatus("Link copied", "success");
       logger.info("URL copied to clipboard: {}", url);
     }
   }
@@ -453,26 +485,53 @@ public class MainController {
 
   private void switchTheme() {
     Scene scene = rootContainer.getScene();
-    scene.getStylesheets().clear();
-
-    if (isDarkTheme) {
-      scene.getStylesheets().add(getClass().getResource("/css/dark-theme.css").toExternalForm());
-    } else {
-      scene.getStylesheets().add(getClass().getResource("/css/light-theme.css").toExternalForm());
-    }
+    // base.css holds layout + components; the theme file only defines the -hs-* colors
+    scene.getStylesheets().setAll(themeStylesheets(isDarkTheme));
 
     updateThemeIcon();
     logger.info("Switched to {} theme", isDarkTheme ? "dark" : "light");
   }
 
+  /** Stylesheets for a theme, in load order. Also used by MainApp for the first scene. */
+  public static java.util.List<String> themeStylesheets(boolean dark) {
+    String theme = dark ? "/css/dark-theme.css" : "/css/light-theme.css";
+    return java.util.List.of(
+        MainController.class.getResource("/css/base.css").toExternalForm(),
+        MainController.class.getResource(theme).toExternalForm());
+  }
+
   private void updateThemeIcon() {
     if (themeIcon != null) {
-      if (isDarkTheme) {
-        // Dark mode active - show sun icon (click to go light)
-        themeIcon.setIconLiteral("mdi2w-white-balance-sunny");
-      } else {
-        // Light mode active - show moon icon (click to go dark)
-        themeIcon.setIconLiteral("mdi2m-moon-waning-crescent");
+      // Show the theme you'd switch to
+      themeIcon.setIconLiteral(isDarkTheme ? "fth-sun" : "fth-moon");
+    }
+  }
+
+  /** Swap the start / stop buttons and show or hide everything that only exists while live. */
+  private void setRunningUi(boolean running) {
+    startServerButton.setVisible(!running);
+    stopServerButton.setVisible(running);
+    stopServerButton.setDisable(!running);
+    qrCodeImageView.setVisible(running);
+    if (urlContainer != null) {
+      urlContainer.setVisible(running);
+    }
+    if (statsSection != null) {
+      statsSection.setVisible(running);
+    }
+    if (portInfoLabel != null && !running) {
+      portInfoLabel.setVisible(false);
+    }
+  }
+
+  private void setServerState(String text, boolean live) {
+    if (serverStateLabel != null) {
+      serverStateLabel.setText(text);
+    }
+    if (serverStatePill != null) {
+      serverStatePill.getStyleClass().remove("pill-live");
+      if (live) {
+        serverStatePill.getStyleClass().add("pill-live");
       }
     }
   }
@@ -493,11 +552,15 @@ public class MainController {
 
     showError(errorMsg);
 
+    setRunningUi(false);
     startServerButton.setDisable(false);
     selectFolderButton.setDisable(false);
     autoShutdownCheck.setDisable(false);
-    stopServerButton.setDisable(true);
+    if (httpsCheck != null) {
+      httpsCheck.setDisable(false);
+    }
     serverProgress.setVisible(false);
+    setServerState("Idle", false);
   }
 
   private void updateStatus(String message, String type) {

@@ -13,12 +13,13 @@ import org.slf4j.LoggerFactory;
 
 public class MainApp extends Application {
   private static final Logger logger = LoggerFactory.getLogger(MainApp.class);
-  private static final int WINDOW_WIDTH = 800;
-  private static final int WINDOW_HEIGHT = 700;
+  private static final int WINDOW_WIDTH = 940;
+  private static final int WINDOW_HEIGHT = 660;
 
   @Override
   public void start(Stage primaryStage) {
     try {
+      loadFonts();
       FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/main.fxml"));
       Parent root = loader.load();
       // what is this line  do i mean i created the MainController then how can the builtin
@@ -29,16 +30,20 @@ public class MainApp extends Application {
       // scene decide what is showing on the window
       Scene scene = new Scene(root, WINDOW_WIDTH, WINDOW_HEIGHT);
 
-      // Load default theme (light)
+      // Load default theme (dark): base.css + the dark palette
       // for the css
-      scene.getStylesheets().add(getClass().getResource("/css/dark-theme.css").toExternalForm());
+      scene.getStylesheets().setAll(MainController.themeStylesheets(true));
       // meta data
-      primaryStage.setTitle("HtShare -Desktop");
+      primaryStage.setTitle("HtShare");
+      var icon = getClass().getResourceAsStream("/image/htshare.png");
+      if (icon != null) {
+        primaryStage.getIcons().add(new javafx.scene.image.Image(icon));
+      }
       primaryStage.setScene(scene);
       // why is it  even there i mean  the size of the Scene had intialized
-      primaryStage.setMinWidth(700);
+      primaryStage.setMinWidth(760);
 
-      primaryStage.setMinHeight(600);
+      primaryStage.setMinHeight(560);
       primaryStage.show();
 
       // Cleanup on close
@@ -53,6 +58,19 @@ public class MainApp extends Application {
     } catch (Exception e) {
       logger.error("Failed to start application", e);
       System.exit(1);
+    }
+  }
+
+  /** Bundle Inter so the UI looks the same on every distro (families: Inter, Inter Medium, Inter SemiBold). */
+  private void loadFonts() {
+    for (String weight : new String[] {"Regular", "Medium", "SemiBold"}) {
+      try (var in = getClass().getResourceAsStream("/fonts/Inter-" + weight + ".ttf")) {
+        if (in == null || javafx.scene.text.Font.loadFont(in, 13) == null) {
+          logger.warn("Could not load font Inter-{}", weight);
+        }
+      } catch (Exception e) {
+        logger.warn("Could not load font Inter-{}", weight, e);
+      }
     }
   }
 

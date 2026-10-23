@@ -1,71 +1,128 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>{{title}}</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<meta name="robots" content="noindex">
+<title>{{title}} · HtShare</title>
+<style>
+  :root {
+    --bg: #f7f7f8; --surface: #ffffff; --surface-2: #f1f1f3;
+    --border: #e4e4e8; --text: #18181b; --muted: #6b6b74; --faint: #a1a1aa;
+    --live: #12a46a;
+    --k-image: #2f7de1; --k-video: #c2410c; --k-audio: #9333ea;
+    --k-archive: #a16207; --k-doc: #18181b; --k-code: #0f766e; --k-other: #6b6b74;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0f0f11; --surface: #17171a; --surface-2: #1f1f23;
+      --border: #2a2a2f; --text: #ededef; --muted: #9a9aa3; --faint: #66666e;
+      --live: #3ecf8e;
+      --k-image: #7fb0f5; --k-video: #f59e6b; --k-audio: #c69cf5;
+      --k-archive: #e0b85a; --k-doc: #ededef; --k-code: #5fd3c4; --k-other: #9a9aa3;
+    }
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    background: var(--bg); color: var(--text);
+    font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, "Inter", sans-serif;
+    min-height: 100vh;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  a { color: inherit; text-decoration: none; }
+  .wrap { max-width: 720px; margin: 0 auto; padding: 0 16px; }
+
+  /* top bar */
+  .top {
+    position: sticky; top: 0; z-index: 2;
+    background: color-mix(in srgb, var(--surface) 85%, transparent);
+    -webkit-backdrop-filter: saturate(1.4) blur(12px); backdrop-filter: saturate(1.4) blur(12px);
+    border-bottom: 1px solid var(--border);
+  }
+  .top .wrap { display: flex; align-items: center; justify-content: space-between; height: 52px; }
+  .brand { font-weight: 600; font-size: 15px; letter-spacing: -0.01em; }
+  .live { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 500; color: var(--live); }
+  .live::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--live); }
+
+  /* heading */
+  .head { padding: 20px 0 14px; }
+  .crumbs { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 6px; font-size: 13px; color: var(--muted); margin-bottom: 6px; }
+  .crumbs a { padding: 2px 0; }
+  .crumbs a:hover, .crumbs a:focus-visible { color: var(--text); text-decoration: underline; text-underline-offset: 3px; }
+  .crumbs .sep { color: var(--faint); }
+  h1 { font-size: 22px; font-weight: 600; letter-spacing: -0.02em; overflow-wrap: anywhere; }
+  .summary { color: var(--muted); font-size: 13px; margin-top: 2px; }
+
+  /* list */
+  .list {
+    list-style: none; background: var(--surface);
+    border: 1px solid var(--border); border-radius: 14px; overflow: hidden;
+  }
+  .list li + li { border-top: 1px solid var(--border); }
+  .row {
+    display: flex; align-items: center; gap: 12px;
+    min-height: 60px; padding: 10px 14px;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .row:hover { background: var(--surface-2); }
+  .row:active { background: var(--border); }
+  .row:focus-visible { outline: 2px solid var(--text); outline-offset: -2px; border-radius: 14px; }
+
+  .ico {
+    flex: none; width: 40px; height: 40px; border-radius: 10px;
+    display: grid; place-items: center;
+    background: var(--surface-2); border: 1px solid var(--border);
+    font: 600 10px/1 ui-monospace, "SF Mono", Menlo, monospace; letter-spacing: 0.02em;
+    color: var(--k-other);
+  }
+  .ico svg { width: 20px; height: 20px; fill: var(--muted); }
+  .ico-folder { background: transparent; border-color: transparent; }
+  .ico-image { color: var(--k-image); } .ico-video { color: var(--k-video); }
+  .ico-audio { color: var(--k-audio); } .ico-archive { color: var(--k-archive); }
+  .ico-doc { color: var(--k-doc); } .ico-code { color: var(--k-code); }
+
+  .text { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+  .name { font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .meta { font-size: 12.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+  .end { flex: none; width: 18px; height: 18px; fill: none; stroke: var(--faint); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .row:hover .end { stroke: var(--text); }
+
+  /* empty */
+  .empty {
+    background: var(--surface); border: 1px dashed var(--border); border-radius: 14px;
+    padding: 56px 20px; text-align: center; color: var(--muted);
+  }
+  .empty svg { width: 28px; height: 28px; fill: var(--faint); margin-bottom: 8px; }
+
+  footer { color: var(--faint); font-size: 12px; text-align: center; padding: 28px 16px 32px; }
+
+  @media (min-width: 640px) {
+    .head { padding: 32px 0 18px; }
+    h1 { font-size: 26px; }
+    .row { padding: 10px 18px; }
+  }
+</style>
 </head>
 <body>
-  <div class="container">
-    <div class="header">
-      <h1>📁 {{folderName}}</h1>
-      <p class="subtitle">Shared Folder</p>
+  <header class="top">
+    <div class="wrap">
+      <span class="brand">HtShare</span>
+      <span class="live">Live</span>
     </div>
+  </header>
 
-    {{breadcrumb}}
+  <main class="wrap">
+    <div class="head">
+      {{breadcrumb}}
+      <h1>{{folderName}}</h1>
+      <p class="summary">{{itemSummary}}</p>
+    </div>
     {{fileList}}
-  </div>
-								<style>
-								* { margin: 0; padding: 0; box-sizing: border-box; }
-    body {
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        min-height: 100vh; padding: 20px;
-    }
-    .container {
-        max-width: 900px; margin: 0 auto; background: white;
-        border-radius: 16px; box-shadow: 0 20px 60px rgba(0,0,0,0.15);
-        overflow: hidden;
-    }
-    .header {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white; padding: 40px 30px; text-align: center;
-    }
-    .header h1 { font-size: 32px; margin-bottom: 8px; font-weight: 600; }
-    .subtitle { opacity: 0.95; font-size: 15px; }
-    .breadcrumb {
-        padding: 16px 25px; background: #f8f9fa;
-        border-bottom: 1px solid #e9ecef; font-size: 14px;
-    }
-    .breadcrumb a { color: #667eea; text-decoration: none; font-weight: 500; }
-    .breadcrumb a:hover { text-decoration: underline; }
-    .file-list { list-style: none; }
-    .file-item {
-        border-bottom: 1px solid #e9ecef;
-        transition: all 0.2s ease;
-    }
-    .file-item:hover { background: #f8f9fa; transform: translateX(4px); }
-    .file-item a {
-        display: flex; align-items: center;
-        padding: 18px 25px; text-decoration: none;
-        color: #2d3748;
-    }
-    .icon { font-size: 28px; margin-right: 16px; min-width: 32px; }
-    .name { flex: 1; font-weight: 500; font-size: 15px; }
-    .size {
-        color: #718096; font-size: 13px;
-        margin-left: 12px; min-width: 70px;
-        text-align: right;
-    }
-    .empty {
-        text-align: center; padding: 80px 20px;
-        color: #a0aec0; font-size: 18px;
-    }
-    @media (max-width: 600px) {
-        .container { border-radius: 0; }
-        .header h1 { font-size: 24px; }
-        .size { display: none; }
-    }
-								</style>
+  </main>
+
+  <footer>Shared from a computer on your network · tap a file to download</footer>
 </body>
 </html>
-

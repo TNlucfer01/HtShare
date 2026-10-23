@@ -1,257 +1,174 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- these are import for the vbox -->
+
 <?import javafx.geometry.Insets?>
 <?import javafx.scene.control.*?>
 <?import javafx.scene.image.ImageView?>
 <?import javafx.scene.layout.*?>
-<?import javafx.scene.text.Font?>
 <?import org.kordamp.ikonli.javafx.FontIcon?>
-<!--  what are these properties even means -->
-<VBox xmlns="http://javafx.com/javafx/17"
-	xmlns:fx="http://javafx.com/fxml/1"
-	fx:controller="com.htshare.ui.MainController"
-	spacing="0" styleClass="root-container">
 
-	<VBox fx:id="rootContainer" spacing="0" VBox.vgrow="ALWAYS">
+<!--
+  HtShare main window.
+  Top bar · two-column body (controls | connect panel) · status bar.
+  Styling: css/base.css + css/{dark,light}-theme.css
+-->
+<VBox fx:id="rootContainer" xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1"
+	fx:controller="com.htshare.ui.MainController" styleClass="app">
 
-		<!-- Header -->
-		<HBox styleClass="header" alignment="CENTER_LEFT">
-			<padding>
-				<Insets top="20" right="20" bottom="20" left="20" />
-			</padding>
-
-			<VBox HBox.hgrow="ALWAYS" spacing="5">
-				<Label text="📁 File Share" styleClass="app-title">
-					<font>
-						<Font name="System Bold" size="24" />
-					</font>
-				</Label>
-				<Label text="Share files securely over your local network"
-					styleClass="app-subtitle" />
-			</VBox>
-
-			<ToggleButton fx:id="themeToggle" styleClass="theme-toggle"
-				onAction="#handleThemeToggle" mnemonicParsing="false">
-				<graphic>
-					<FontIcon fx:id="themeIcon"
-						iconLiteral="mdi2m-moon-waning-crescent"
-						iconSize="20" iconColor="white" />
-				</graphic>
-			</ToggleButton>
+	<!-- Top bar -->
+	<HBox styleClass="topbar">
+		<Label text="HtShare" styleClass="brand" />
+		<Label text="Local file sharing" styleClass="brand-sub" />
+		<Region HBox.hgrow="ALWAYS" />
+		<HBox fx:id="serverStatePill" styleClass="pill">
+			<Region styleClass="dot" />
+			<Label fx:id="serverStateLabel" text="Idle" />
 		</HBox>
+		<ToggleButton fx:id="themeToggle" onAction="#handleThemeToggle" styleClass="icon-button"
+			mnemonicParsing="false">
+			<graphic>
+				<FontIcon fx:id="themeIcon" iconLiteral="fth-sun" iconSize="16" />
+			</graphic>
+			<tooltip>
+				<Tooltip text="Switch theme" />
+			</tooltip>
+		</ToggleButton>
+	</HBox>
 
-		<!-- Scrollable Main Content -->
-		<ScrollPane fitToWidth="true" fitToHeight="true"
-			styleClass="scroll-pane"
-			VBox.vgrow="ALWAYS"
-			hbarPolicy="NEVER"
-			vbarPolicy="AS_NEEDED">
+	<!-- Body -->
+	<ScrollPane fitToWidth="true" hbarPolicy="NEVER" vbarPolicy="AS_NEEDED" VBox.vgrow="ALWAYS">
+		<VBox alignment="TOP_CENTER">
+			<HBox styleClass="body" maxWidth="1080">
 
-			<!-- Main Content -->
-			<VBox spacing="20" styleClass="content-area">
-				<padding>
-					<Insets top="30" right="30" bottom="30" left="30" />
-				</padding>
+				<!-- Left: controls -->
+				<VBox styleClass="column" HBox.hgrow="ALWAYS" minWidth="360">
 
-				<!-- Network Status Section -->
-				<VBox spacing="10" styleClass="section network-section">
-					<Label text="Network Status" styleClass="section-title">
-						<font>
-							<Font name="System Bold" size="16" />
-						</font>
-					</Label>
+					<!-- Folder -->
+					<VBox styleClass="card">
+						<VBox spacing="3">
+							<Label text="Shared folder" styleClass="card-title" />
+							<Label text="Everything inside this folder is visible to connected devices."
+								styleClass="hint" wrapText="true" />
+						</VBox>
+						<HBox spacing="8" alignment="CENTER_LEFT">
+							<HBox styleClass="field" HBox.hgrow="ALWAYS">
+								<FontIcon iconLiteral="fth-folder" iconSize="14" />
+								<Label fx:id="folderPathLabel" text="No folder selected"
+									styleClass="folder-path, folder-empty" textOverrun="LEADING_ELLIPSIS"
+									maxWidth="Infinity" HBox.hgrow="ALWAYS" />
+							</HBox>
+							<Button fx:id="selectFolderButton" text="Choose…" onAction="#handleSelectFolder"
+								minWidth="90" />
+						</HBox>
+					</VBox>
 
+					<!-- Options -->
+					<VBox styleClass="card">
+						<Label text="Options" styleClass="card-title" />
+						<HBox styleClass="option">
+							<VBox spacing="2" HBox.hgrow="ALWAYS">
+								<Label text="HTTPS" styleClass="option-title" />
+								<Label text="Encrypted. Phones will show a one-time certificate warning."
+									styleClass="hint" wrapText="true" />
+							</VBox>
+							<CheckBox fx:id="httpsCheck" styleClass="switch" selected="true"
+								mnemonicParsing="false" />
+						</HBox>
+						<Region styleClass="divider" />
+						<HBox styleClass="option">
+							<VBox spacing="2" HBox.hgrow="ALWAYS">
+								<Label text="Auto-stop" styleClass="option-title" />
+								<Label text="Stop sharing after 5 minutes with no activity."
+									styleClass="hint" wrapText="true" />
+							</VBox>
+							<CheckBox fx:id="autoShutdownCheck" styleClass="switch" selected="true"
+								mnemonicParsing="false" />
+						</HBox>
+					</VBox>
+
+					<!-- Start / stop -->
 					<HBox spacing="10" alignment="CENTER_LEFT">
-						<Label fx:id="networkStatusLabel"
-							text="Checking network..."
-							styleClass="network-status"
-							wrapText="true"
-							HBox.hgrow="ALWAYS" />
+						<Button fx:id="startServerButton" text="Start sharing" onAction="#handleStartServer"
+							styleClass="button-primary" maxWidth="Infinity" HBox.hgrow="ALWAYS" disable="true" />
+						<Button fx:id="stopServerButton" text="Stop sharing" onAction="#handleStopServer"
+							styleClass="button-danger" maxWidth="Infinity" HBox.hgrow="ALWAYS" visible="false" />
+						<ProgressIndicator fx:id="serverProgress" prefWidth="22" prefHeight="22"
+							visible="false" />
+					</HBox>
 
-						<Button fx:id="refreshNetworkButton"
-							onAction="#handleRefreshNetwork"
-							styleClass="icon-button"
-							minWidth="35"
-							minHeight="35">
+					<!-- Live stats -->
+					<HBox fx:id="statsSection" styleClass="card" visible="false">
+						<VBox styleClass="stat, stat-first" HBox.hgrow="ALWAYS">
+							<Label text="Requests" styleClass="stat-label" />
+							<Label fx:id="requestsLabel" text="0" styleClass="stat-value" />
+						</VBox>
+						<VBox styleClass="stat" HBox.hgrow="ALWAYS">
+							<Label text="Downloads" styleClass="stat-label" />
+							<Label fx:id="downloadsLabel" text="0" styleClass="stat-value" />
+						</VBox>
+						<VBox styleClass="stat" HBox.hgrow="ALWAYS">
+							<Label text="Connected" styleClass="stat-label" />
+							<Label fx:id="activeConnectionsLabel" text="0" styleClass="stat-value" />
+						</VBox>
+						<VBox styleClass="stat" HBox.hgrow="ALWAYS">
+							<Label text="Auto-stop in" styleClass="stat-label" />
+							<Label fx:id="timeRemainingLabel" text="--" styleClass="stat-value" />
+						</VBox>
+					</HBox>
+
+					<Label fx:id="portInfoLabel" styleClass="hint" wrapText="true" visible="false" />
+				</VBox>
+
+				<!-- Right: connect panel -->
+				<VBox styleClass="card" minWidth="300" prefWidth="320" maxWidth="320">
+					<VBox spacing="3">
+						<Label text="Connect a device" styleClass="card-title" />
+						<Label text="Scan with your phone's camera. Both devices must be on the same network."
+							styleClass="hint" wrapText="true" />
+					</VBox>
+
+					<HBox alignment="CENTER">
+						<StackPane fx:id="qrFrame" styleClass="qr-frame">
+							<VBox fx:id="qrPlaceholder" styleClass="qr-placeholder">
+								<FontIcon iconLiteral="fth-smartphone" iconSize="26" />
+								<Label text="Start sharing to get a QR code" wrapText="true" />
+							</VBox>
+							<ImageView fx:id="qrCodeImageView" fitWidth="232" fitHeight="232"
+								preserveRatio="true" smooth="false" visible="false" />
+						</StackPane>
+					</HBox>
+
+					<HBox fx:id="urlContainer" styleClass="field, url-box" visible="false">
+						<Label fx:id="serverUrlLabel" styleClass="url" maxWidth="Infinity"
+							HBox.hgrow="ALWAYS" />
+						<Button fx:id="copyUrlButton" onAction="#handleCopyUrl" styleClass="icon-button">
 							<graphic>
-								<FontIcon
-									iconLiteral="mdi2r-refresh"
-									iconSize="16" />
+								<FontIcon iconLiteral="fth-copy" iconSize="14" />
 							</graphic>
+							<tooltip>
+								<Tooltip text="Copy link" />
+							</tooltip>
 						</Button>
 					</HBox>
 				</VBox>
+			</HBox>
+		</VBox>
+	</ScrollPane>
 
-				<!-- Folder Selection Section -->
-				<VBox spacing="12" styleClass="section">
-					<Label text="Select Folder" styleClass="section-title">
-						<font>
-							<Font name="System Bold" size="16" />
-						</font>
-					</Label>
-
-					<HBox spacing="10" alignment="CENTER_LEFT">
-						<Button fx:id="selectFolderButton" text="Browse..."
-							onAction="#handleSelectFolder"
-							styleClass="primary-button"
-							prefWidth="120" />
-
-						<Label fx:id="folderPathLabel"
-							text="No folder selected"
-							styleClass="folder-path"
-							HBox.hgrow="ALWAYS"
-							wrapText="true" />
-					</HBox>
-				</VBox>
-
-				<!-- Server Control Section -->
-				<VBox spacing="12" styleClass="section">
-					<Label text="Server Control" styleClass="section-title">
-						<font>
-							<Font name="System Bold" size="16" />
-						</font>
-					</Label>
-
-					<HBox spacing="10" alignment="CENTER_LEFT">
-						<Button fx:id="startServerButton"
-							text="Start Server"
-							onAction="#handleStartServer"
-							styleClass="success-button"
-							prefWidth="120"
-							disable="true" />
-
-						<Button fx:id="stopServerButton"
-							text="Stop Server"
-							onAction="#handleStopServer"
-							styleClass="danger-button"
-							prefWidth="120"
-							disable="true" />
-
-						<ProgressIndicator fx:id="serverProgress"
-							prefWidth="30"
-							prefHeight="30"
-							visible="false" />
-
-						<Region HBox.hgrow="ALWAYS" />
-
-						<CheckBox fx:id="httpsCheck"
-							text="🔒 HTTPS"
-							styleClass="checkbox"
-							selected="true" />
-
-						<CheckBox fx:id="autoShutdownCheck"
-							text="Auto-shutdown (5 min idle)"
-							styleClass="checkbox"
-							selected="true" />
-					</HBox>
-
-					<!-- Port Information -->
-					<Label fx:id="portInfoLabel"
-						styleClass="port-info"
-						visible="false"
-						wrapText="true" />
-				</VBox>
-
-				<!-- Statistics Section -->
-				<HBox spacing="15" styleClass="section stats-section"
-					visible="false" fx:id="statsSection">
-					<VBox spacing="5" HBox.hgrow="ALWAYS">
-						<Label text="Total Requests"
-							styleClass="stats-label" />
-						<Label fx:id="requestsLabel" text="0"
-							styleClass="stats-value" />
-					</VBox>
-
-					<VBox spacing="5" HBox.hgrow="ALWAYS">
-						<Label text="Downloads" styleClass="stats-label" />
-						<Label fx:id="downloadsLabel" text="0"
-							styleClass="stats-value" />
-					</VBox>
-
-					<VBox spacing="5" HBox.hgrow="ALWAYS">
-						<Label text="Active Connections"
-							styleClass="stats-label" />
-						<Label fx:id="activeConnectionsLabel" text="0"
-							styleClass="stats-value" />
-					</VBox>
-
-					<VBox spacing="5" HBox.hgrow="ALWAYS">
-						<Label text="Time Remaining"
-							styleClass="stats-label" />
-						<Label fx:id="timeRemainingLabel" text="--"
-							styleClass="stats-value" />
-					</VBox>
-				</HBox>
-
-				<!-- QR Code Section -->
-				<VBox spacing="12" styleClass="section qr-section"
-					alignment="CENTER">
-					<Label text="Scan QR Code to Connect"
-						styleClass="section-title">
-						<font>
-							<Font name="System Bold" size="16" />
-						</font>
-					</Label>
-
-					<VBox alignment="CENTER" spacing="15"
-						styleClass="qr-container">
-						<ImageView fx:id="qrCodeImageView"
-							fitWidth="300"
-							fitHeight="300"
-							preserveRatio="true"
-							visible="false" />
-
-						<HBox spacing="10" alignment="CENTER"
-							fx:id="urlContainer" visible="false">
-							<Label fx:id="serverUrlLabel"
-								styleClass="server-url">
-								<font>
-									<Font name="Monospaced"
-										size="14" />
-								</font>
-							</Label>
-
-							<Button fx:id="copyUrlButton"
-								onAction="#handleCopyUrl"
-								styleClass="icon-button"
-								minWidth="35"
-								minHeight="35">
-								<graphic>
-									<FontIcon
-										iconLiteral="mdi2c-content-copy"
-										iconSize="16" />
-								</graphic>
-							</Button>
-						</HBox>
-					</VBox>
-				</VBox>
-
-				<!-- Status Bar -->
-				<HBox styleClass="status-bar" alignment="CENTER_LEFT">
-					<padding>
-						<Insets top="12" right="15" bottom="12" left="15" />
-					</padding>
-					<Label fx:id="statusLabel"
-						text="Ready"
-						styleClass="status-info" />
-				</HBox>
-
-			</VBox>
-		</ScrollPane>
-
-		<!-- Footer -->
-		<HBox styleClass="footer" alignment="CENTER" spacing="15">
-			<padding>
-				<Insets top="10" right="15" bottom="10" left="15" />
-			</padding>
-
-			<Hyperlink text="GitHub" fx:id="githubLink" onAction="#handleGithubLink"
-				styleClass="footer-link" />
-
-			<Label text="|" styleClass="footer-separator" />
-
-			<Label text="© 2025 TNLucifer" styleClass="footer-text" />
-		</HBox>
-
-	</VBox>
+	<!-- Status bar -->
+	<HBox styleClass="statusbar">
+		<Label fx:id="statusLabel" text="Ready" styleClass="status-info" maxWidth="Infinity"
+			HBox.hgrow="ALWAYS" />
+		<FontIcon iconLiteral="fth-wifi" iconSize="12" />
+		<Label fx:id="networkStatusLabel" text="Checking network…" styleClass="network-success" />
+		<Button fx:id="refreshNetworkButton" onAction="#handleRefreshNetwork" styleClass="icon-button">
+			<graphic>
+				<FontIcon iconLiteral="fth-refresh-cw" iconSize="12" />
+			</graphic>
+			<tooltip>
+				<Tooltip text="Check network again" />
+			</tooltip>
+		</Button>
+		<Region styleClass="bar-sep" />
+		<Hyperlink fx:id="githubLink" text="GitHub" onAction="#handleGithubLink" />
+	</HBox>
 </VBox>
